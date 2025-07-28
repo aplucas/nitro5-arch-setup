@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.4
+#   Versão: 7.5
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.5: Removida a Etapa 19 (AMD P-State) a pedido do utilizador.
 #   - v7.4: Corrigida a Etapa 4 para configurar a aceleração de vídeo (VA-API) via variáveis de ambiente.
 #   - v7.3: Removida a verificação de erro explícita após a instalação do PipeWire.
 #   - v7.2: Corrigida a instalação do PipeWire para evitar conflitos com o PulseAudio.
@@ -25,7 +26,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=20
+TOTAL_STEPS=19
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -717,54 +718,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 19. ATIVAR MODO PERFORMANCE (AMD P-STATE)
-# ========================================================
-section_header "A otimizar a performance do CPU AMD..."
-ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
-
-# Deteta o gestor de arranque
-if [ -d "/boot/grub" ]; then
-    BOOTLOADER="grub"
-elif [ -d "/boot/loader" ]; then
-    BOOTLOADER="systemd-boot"
-else
-    BOOTLOADER="unknown"
-fi
-
-case "$BOOTLOADER" in
-    grub)
-        GRUB_FILE="/etc/default/grub"
-        if ! grep -q "amd_pstate=guided" "$GRUB_FILE"; then
-            info "Detetado GRUB. A adicionar o parâmetro do kernel 'amd_pstate=guided'..."
-            sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 amd_pstate=guided"/' "$GRUB_FILE"
-            info "A regenerar a configuração do GRUB..."
-            sudo grub-mkconfig -o /boot/grub/grub.cfg
-            success "AMD P-State ativado para GRUB. Estará disponível após o reinício."
-        else
-            info "O AMD P-State já está ativado na configuração do GRUB."
-        fi
-        ;;
-    systemd-boot)
-        ENTRY_FILE=$(find /boot/loader/entries -maxdepth 1 -type f -name "*.conf" | head -n 1)
-        if [ -n "$ENTRY_FILE" ]; then
-            if ! grep -q "amd_pstate=guided" "$ENTRY_FILE"; then
-                info "Detetado systemd-boot. A adicionar 'amd_pstate=guided' a $ENTRY_FILE..."
-                sudo sed -i '/^options/ s/$/ amd_pstate=guided/' "$ENTRY_FILE"
-                success "Parâmetro do kernel adicionado para systemd-boot. Estará disponível após o reinício."
-            else
-                info "O AMD P-State já está ativado em "$ENTRY_FILE"."
-            fi
-        else
-            warning "Não foi encontrado nenhum ficheiro de entrada .conf em /boot/loader/entries/."
-        fi
-        ;;
-    *)
-        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manualmente."
-        ;;
-esac
-
-
-# 20. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 19. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -790,7 +744,7 @@ echo -e "${C_GREEN}=============================================================
 echo
 info "Resumo e Próximos Passos:"
 echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-echo "    - Após o reinício, os drivers, o novo shell, as novas extensões e o modo performance estarão ativos."
+echo "    - Após o reinício, os drivers, o novo shell e as novas extensões estarão ativos."
 echo
 echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões e Presets:${C_RESET}"
 echo "    - As extensões (Clipboard, Vitals, etc.) podem precisar ser ativadas na app 'Extensões'."
@@ -817,10 +771,7 @@ echo
 echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
 echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
-echo -e "8.  ${C_YELLOW}Modo Performance:${C_RESET}"
-echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
-echo
-echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
+echo -e "8.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
 echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
