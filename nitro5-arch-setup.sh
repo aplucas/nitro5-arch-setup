@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 4.9
+#   Versão: 5.0
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.0: Corrigido o nome do pacote do Angry IP Scanner (de 'angryipscanner' para 'ipscan').
 #   - v4.9: Adicionada instalação do Angry IP Scanner (ipscan).
 #   - v4.8: Adicionada deteção automática de GRUB/systemd-boot para ativar o modo Performance.
 #   - v4.7: Adicionada configuração de auto-save no VS Code.
@@ -301,7 +302,7 @@ fi
 if ! is_installed_pacman obsidian; then sudo pacman -S --needed --noconfirm obsidian; else info "Obsidian já instalado."; fi
 if ! is_installed_yay rustdesk-bin; then yay -S --needed --noconfirm rustdesk-bin; else info "RustDesk já instalado."; fi
 if ! is_installed_yay freetube-bin; then yay -S --needed --noconfirm freetube-bin; else info "FreeTube já instalado."; fi
-if ! is_installed_yay angryipscanner; then yay -S --needed --noconfirm angryipscanner; else info "Angry IP Scanner já instalado."; fi
+if ! is_installed_yay ipscan; then yay -S --needed --noconfirm ipscan; else info "Angry IP Scanner (ipscan) já instalado."; fi
 if ! is_installed_yay brave-bin; then yay -S --needed --noconfirm brave-bin; else info "Brave Browser já instalado."; fi
 if ! is_installed_yay google-chrome; then yay -S --needed --noconfirm google-chrome; else info "Google Chrome já instalado."; fi
 if ! is_installed_yay microsoft-edge-stable-bin; then yay -S --needed --noconfirm microsoft-edge-stable-bin; else info "Microsoft Edge já instalado."; fi
@@ -558,7 +559,7 @@ case "$BOOTLOADER" in
         fi
         ;;
     *)
-        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manualmente."
+        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manually."
         ;;
 esac
 
