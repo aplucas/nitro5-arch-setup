@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.7
+#   Versão: 5.8
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.8: Adicionada instalação do utilitário NitroSense para controlo de ventoinhas.
 #   - v5.7: Tornada a configuração do Git interativa para não usar dados do autor por defeito.
 #   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
 #   - v5.5: Corrigida a instalação da CLI do Gemini usando o pacote 'gemi-cli' do npm.
@@ -58,7 +59,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=15
+TOTAL_STEPS=16
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -411,7 +412,23 @@ fi
 
 success "Verificação de otimizações do sistema concluída."
 
-# 9. CONFIGURAÇÃO DO BLUETOOTH
+# 9. INSTALAÇÃO DO ACER NITROSENSE
+# ========================================================
+section_header "A instalar o utilitário Acer NitroSense..."
+ask_confirmation "Desejas instalar o NitroSense para controlo de ventoinhas e perfis de energia?"
+
+if ! is_installed_yay nitrosense-git; then
+    info "A instalar o NitroSense (via AUR)..."
+    yay -S --needed --noconfirm nitrosense-git
+    info "A ativar o serviço do NitroSense..."
+    sudo systemctl enable --now nitrosense.service
+    success "NitroSense instalado e ativado com sucesso."
+else
+    info "NitroSense já está instalado."
+fi
+
+
+# 10. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -425,7 +442,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 10. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 11. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -444,7 +461,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 11. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 12. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -462,7 +479,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 12. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 13. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -535,7 +552,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 13. CONFIGURAÇÃO DE ENERGIA
+# 14. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -553,7 +570,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 14. ATIVAR MODO PERFORMANCE (AMD P-STATE)
+# 15. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
 section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
@@ -600,7 +617,7 @@ case "$BOOTLOADER" in
 esac
 
 
-# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 16. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -658,6 +675,9 @@ echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo -e "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
 echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
+echo
+echo -e "10. ${C_YELLOW}Controlo de Ventoinhas (NitroSense):${C_RESET}"
+echo -e "    - Se instalado, o NitroSense estará a correr em segundo plano. Podes interagir com ele via linha de comando se necessário."
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 
