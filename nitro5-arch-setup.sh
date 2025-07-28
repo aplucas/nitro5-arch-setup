@@ -5,16 +5,13 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.1
+#   Versão: 6.2
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.2: Corrigido conflito entre 'tlp' e 'power-profiles-daemon'. O script agora remove o PPD se o TLP for selecionado.
 #   - v6.1: Adicionada instalação de Codecs Multimídia e Gestão de Energia com TLP.
 #   - v6.0: Removida a etapa de instalação do NitroSense.
-#   - v5.9: Alterada a instalação do NitroSense para usar o repositório GitHub diretamente.
-#   - v5.8: Adicionada instalação do utilitário NitroSense para controlo de ventoinhas.
-#   - v5.7: Tornada a configuração do Git interativa para não usar dados do autor por defeito.
-#   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
 #
 # ===================================================================================
 
@@ -312,6 +309,7 @@ success "Verificação de aplicações adicionais concluída."
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
 
+# Instala o power-profiles-daemon como gestor de energia padrão
 if ! is_installed_pacman power-profiles-daemon; then
     sudo pacman -S --needed --noconfirm power-profiles-daemon
     sudo systemctl enable --now power-profiles-daemon.service
@@ -390,19 +388,38 @@ success "Codecs multimídia instalados."
 # 10. GESTÃO AVANÇADA DE ENERGIA (TLP)
 # ========================================================
 section_header "A configurar a gestão avançada de energia para notebooks (TLP)..."
-ask_confirmation "Desejas instalar o TLP para otimizar a duração da bateria?"
 
-if ! is_installed_pacman tlp; then
-    info "A instalar o TLP e o seu gestor de rádio..."
-    sudo pacman -S --needed --noconfirm tlp tlp-rdw
-    info "A ativar o serviço do TLP..."
-    # O serviço do TLP mascara outros serviços que podem entrar em conflito.
-    sudo systemctl enable tlp.service
-    sudo systemctl start tlp.service
-    success "TLP instalado e ativado. As otimizações serão aplicadas automaticamente."
+# Pergunta ao utilizador, mas não sai do script se a resposta for 'não'.
+read -p "$(echo -e "${C_YELLOW}[PERGUNTA]${C_RESET} Desejas instalar o TLP para uma gestão de bateria mais avançada? (Isto irá substituir 'power-profiles-daemon') [S/n] ")" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Ss]$ || $REPLY == "" ]]; then
+    # O utilizador quer instalar o TLP
+    if ! is_installed_pacman tlp; then
+        # Remove o power-profiles-daemon para evitar conflitos
+        if is_installed_pacman power-profiles-daemon; then
+            warning "A remover 'power-profiles-daemon' para instalar o TLP..."
+            sudo systemctl stop power-profiles-daemon.service
+            sudo pacman -Rns --noconfirm power-profiles-daemon
+        fi
+
+        info "A instalar o TLP e o seu gestor de rádio..."
+        sudo pacman -S --needed --noconfirm tlp tlp-rdw
+        
+        # Verifica se a instalação foi bem-sucedida antes de ativar o serviço
+        if is_installed_pacman tlp; then
+            info "A ativar o serviço do TLP..."
+            sudo systemctl enable --now tlp.service
+            success "TLP instalado e ativado."
+        else
+            error "A instalação do TLP falhou. A saltar a ativação do serviço."
+        fi
+    else
+        info "TLP já está instalado."
+    fi
 else
-    info "TLP já está instalado."
+    info "A saltar a instalação do TLP. O 'power-profiles-daemon' será mantido."
 fi
+
 
 # 11. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
@@ -643,10 +660,10 @@ echo "    - Modo Híbrido (atual): 'prime-run <comando>' para usar a NVIDIA."
 echo "    - Modo de Economia: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
 echo
 echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
-echo -e "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
+echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
 echo -e "8.  ${C_YELLOW}Modo Performance:${C_RESET}"
-echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
+echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
