@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 5.0
+#   Versão: 5.1
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.1: Adicionado indicador de progresso das etapas.
 #   - v5.0: Corrigido o nome do pacote do Angry IP Scanner (de 'angryipscanner' para 'ipscan').
 #   - v4.9: Adicionada instalação do Angry IP Scanner (ipscan).
 #   - v4.8: Adicionada deteção automática de GRUB/systemd-boot para ativar o modo Performance.
@@ -50,6 +51,10 @@ C_YELLOW="\e[33m"
 C_RED="\e[31m"
 C_RESET="\e[0m"
 
+# --- Contadores de Etapas ---
+TOTAL_STEPS=15
+CURRENT_STEP=1
+
 # --- Funções de ajuda ---
 info() {
     echo -e "${C_BLUE}[INFO]${C_RESET} $1"
@@ -65,6 +70,12 @@ warning() {
 
 error() {
     echo -e "${C_RED}[ERRO]${C_RESET} $1"
+}
+
+section_header() {
+    echo -e "\n${C_BLUE}================== [ ETAPA ${CURRENT_STEP}/${TOTAL_STEPS} ] ==================${C_RESET}"
+    info "$1"
+    ((CURRENT_STEP++))
 }
 
 # Verifica se um pacote está instalado via pacman (oficial)
@@ -110,12 +121,13 @@ ask_confirmation "Desejas iniciar a configuração do sistema?"
 
 # 1. ATUALIZAR O SISTEMA E INSTALAR DEPENDÊNCIAS BÁSICAS
 # ========================================================
-info "A atualizar o sistema e a instalar pacotes essenciais..."
+section_header "A atualizar o sistema e a instalar pacotes essenciais..."
 sudo pacman -Syu --noconfirm
 sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq
 
 # 2. INSTALAR O AUR HELPER (yay)
 # ========================================================
+section_header "A instalar o AUR Helper (yay)..."
 if ! command -v yay &> /dev/null; then
     info "O AUR Helper 'yay' não foi encontrado. A instalar..."
     git clone https://aur.archlinux.org/yay.git /tmp/yay
@@ -128,7 +140,7 @@ fi
 
 # 3. CONFIGURAÇÃO DOS GRÁFICOS HÍBRIDOS (NVIDIA)
 # ========================================================
-info "A configurar os drivers da NVIDIA para gráficos híbridos..."
+section_header "A configurar os drivers da NVIDIA para gráficos híbridos..."
 ask_confirmation "Esta etapa irá instalar os drivers da NVIDIA e a ferramenta 'envycontrol'. Continuar?"
 
 if ! is_installed_pacman nvidia-dkms; then
@@ -153,10 +165,10 @@ fi
 success "Drivers da NVIDIA e 'envycontrol' configurados."
 warning "É necessário REINICIAR o sistema para que os drivers da NVIDIA funcionem corretamente."
 
-# 4. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO
+# 4. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
 # ========================================================
-info "A instalar ambientes de programação..."
-ask_confirmation "Desejas instalar Python, Node.js (via nvm), Rust, Go e Java?"
+section_header "A instalar ambientes de programação e ferramentas de linha de comando..."
+ask_confirmation "Desejas instalar Python, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
 
 # Python
 if ! is_installed_pacman python; then
@@ -188,6 +200,11 @@ fi
 # Adiciona o cargo ao PATH da sessão atual para poder instalar as ferramentas
 source "$HOME/.cargo/env"
 
+# Ferramentas Rust
+if ! command -v exa &> /dev/null; then cargo install exa; else info "'exa' já está instalado."; fi
+if ! command -v bat &> /dev/null; then cargo install bat; else info "'bat' já está instalado."; fi
+if ! command -v ytop &> /dev/null; then cargo install ytop; else info "'ytop' já está instalado."; fi
+
 # Go
 if ! is_installed_pacman go; then sudo pacman -S --needed --noconfirm go; else info "Go já instalado."; fi
 
@@ -196,21 +213,9 @@ if ! is_installed_pacman jdk-openjdk; then sudo pacman -S --needed --noconfirm j
 
 success "Verificação de ambientes de programação concluída."
 
-# 4.1 INSTALAÇÃO DE FERRAMENTAS RUST
-# ========================================================
-info "A instalar ferramentas de linha de comando escritas em Rust..."
-ask_confirmation "Desejas instalar exa, bat e ytop?"
-
-if ! command -v exa &> /dev/null; then cargo install exa; else info "'exa' já está instalado."; fi
-if ! command -v bat &> /dev/null; then cargo install bat; else info "'bat' já está instalado."; fi
-if ! command -v ytop &> /dev/null; then cargo install ytop; else info "'ytop' já está instalado."; fi
-
-success "Verificação de ferramentas Rust concluída."
-
-
 # 5. FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
 # ========================================================
-info "A instalar ferramentas de desenvolvimento..."
+section_header "A instalar ferramentas de desenvolvimento e produtividade..."
 ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"
 
 if ! is_installed_yay visual-studio-code-bin; then yay -S --needed --noconfirm visual-studio-code-bin; else info "VS Code já instalado."; fi
@@ -229,7 +234,7 @@ success "Verificação de ferramentas de desenvolvimento concluída."
 
 # 6. CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
 # ========================================================
-info "A configurar um terminal moderno (ZSH + Powerlevel10k)..."
+section_header "A configurar um terminal moderno (ZSH + Powerlevel10k)..."
 ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"
 
 if ! is_installed_pacman zsh; then sudo pacman -S --needed --noconfirm zsh zsh-completions; else info "ZSH já instalado."; fi
@@ -288,7 +293,7 @@ success "Terminal configurado com ZSH + Powerlevel10k."
 
 # 7. APLICAÇÕES ADICIONAIS
 # ========================================================
-info "A instalar aplicações adicionais..."
+section_header "A instalar aplicações adicionais..."
 ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
 
 # Instalação do LunarVim através do AUR, que é o método correto para Arch
@@ -313,7 +318,7 @@ success "Verificação de aplicações adicionais concluída."
 
 # 8. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
 # ========================================================
-info "A otimizar o sistema para uso em notebook e a adicionar funcionalidades ao GNOME..."
+section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
 
 if ! is_installed_pacman power-profiles-daemon; then
@@ -385,7 +390,7 @@ success "Verificação de otimizações do sistema concluída."
 
 # 9. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
-info "A configurar o Bluetooth..."
+section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
 
 if ! is_installed_pacman bluez; then
@@ -399,7 +404,7 @@ success "Bluetooth configurado e ativado."
 
 # 10. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
-info "A configurar a integração com o Android..."
+section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
 
 if ! is_installed_pacman kdeconnect; then
@@ -418,7 +423,7 @@ success "Integração com Android (KDE Connect) configurada."
 
 # 11. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
-info "A configurar layouts de teclado adicionais..."
+section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
 
 current_layouts=$(gsettings get org.gnome.desktop.input-sources sources)
@@ -436,7 +441,7 @@ fi
 
 # 12. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
-info "A aplicar configurações pessoais..."
+section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
 
 # Instala o Firefox se necessário
@@ -501,7 +506,7 @@ success "Configurações pessoais aplicadas."
 
 # 13. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
-info "A configurar a gestão de energia..."
+section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
 
 info "A desativar a suspensão automática por inatividade..."
@@ -519,7 +524,7 @@ success "Gestão de energia configurada."
 
 # 14. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
-info "A otimizar a performance do CPU AMD..."
+section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
 
 # Deteta o gestor de arranque
@@ -559,14 +564,14 @@ case "$BOOTLOADER" in
         fi
         ;;
     *)
-        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manually."
+        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manualmente."
         ;;
 esac
 
 
 # 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
-info "A configurar serviços de início automático..."
+section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
     ask_confirmation "Desejas que o RustDesk (acesso remoto) inicie automaticamente com o sistema?"
     # A resposta da confirmação está na variável $REPLY
