@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.6
+#   Versão: 5.7
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.7: Tornada a configuração do Git interativa para não usar dados do autor por defeito.
 #   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
 #   - v5.5: Corrigida a instalação da CLI do Gemini usando o pacote 'gemi-cli' do npm.
 #   - v5.4: Substituída a instalação da CLI do Gemini de pipx para npm (gemini-cli).
@@ -482,18 +483,26 @@ else
 fi
 
 # Configura o Git
-if [[ $(git config --global user.name) != "Lucas A Pereira" ]]; then
-    info "A configurar o nome de utilizador do Git..."
-    git config --global user.name "Lucas A Pereira"
+if ! git config --global --get user.name >/dev/null 2>&1; then
+    info "O nome de utilizador do Git não está configurado."
+    read -p "  -> Insere o teu nome para o Git [Lucas A Pereira]: " git_name
+    # Se o input for vazio, usa o valor padrão
+    git_name=${git_name:-"Lucas A Pereira"}
+    git config --global user.name "$git_name"
+    success "Nome de utilizador do Git definido como: $git_name"
 else
-    info "Nome de utilizador do Git já está configurado."
+    info "Nome de utilizador do Git já está configurado: $(git config --global user.name)"
 fi
 
-if [[ $(git config --global user.email) != "l.alexandre100@gmail.com" ]]; then
-    info "A configurar o email do Git..."
-    git config --global user.email "l.alexandre100@gmail.com"
+if ! git config --global --get user.email >/dev/null 2>&1; then
+    info "O email do Git não está configurado."
+    read -p "  -> Insere o teu email para o Git [l.alexandre100@gmail.com]: " git_email
+    # Se o input for vazio, usa o valor padrão
+    git_email=${git_email:-"l.alexandre100@gmail.com"}
+    git config --global user.email "$git_email"
+    success "Email do Git definido como: $git_email"
 else
-    info "Email do Git já está configurado."
+    info "Email do Git já está configurado: $(git config --global user.email)"
 fi
 
 # Configura a fonte e o auto-save do VS Code se ele estiver instalado
@@ -579,7 +588,7 @@ case "$BOOTLOADER" in
                 sudo sed -i '/^options/ s/$/ amd_pstate=guided/' "$ENTRY_FILE"
                 success "Parâmetro do kernel adicionado para systemd-boot. Estará disponível após o reinício."
             else
-                info "O AMD P-State já está ativado em $ENTRY_FILE."
+                info "O AMD P-State já está ativado em "$ENTRY_FILE"."
             fi
         else
             warning "Não foi encontrado nenhum ficheiro de entrada .conf em /boot/loader/entries/."
