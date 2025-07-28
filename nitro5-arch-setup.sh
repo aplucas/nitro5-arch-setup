@@ -4,7 +4,7 @@
 #
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
-#   Autor: O Teu Parceiro de Programação (Gemini)
+#   Autor: Lucas A Pereira (aplucas)
 #   Versão: 5.2
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
@@ -423,7 +423,7 @@ fi
 if ! is_installed_yay gnome-shell-extension-gsconnect; then
     yay -S --needed --noconfirm gnome-shell-extension-gsconnect
 else
-    info "Extensão GSConnect já está instalada."
+    info "Extensão GSConnect já instalada."
 fi
 
 success "Integração com Android (KDE Connect) configurada."
