@@ -5,14 +5,14 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.6
+#   Versão: 6.7
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio', automatizando a remoção do pulseaudio.
 #   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e adicionado 'ffmpeg' aos codecs.
-#   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API) para corrigir a reprodução em navegadores.
+#   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API).
 #   - v6.4: Corrigido conflito invertido onde a instalação do PPD falhava se o TLP já existisse.
-#   - v6.3: Adicionada instalação do EasyEffects e um preset padrão para otimização de microfone.
 #
 # ===================================================================================
 
@@ -153,6 +153,12 @@ warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alt
 # ========================================================
 section_header "A unificar o sistema de áudio para PipeWire..."
 ask_confirmation "Desejas instalar o PipeWire para uma gestão de áudio moderna (recomendado)?"
+
+# Remove o PulseAudio para evitar conflitos antes de instalar o PipeWire
+if is_installed_pacman pulseaudio; then
+    warning "A remover 'pulseaudio' para instalar o PipeWire..."
+    sudo pacman -Rns --noconfirm pulseaudio pulseaudio-bluetooth
+fi
 
 # Instala o conjunto completo do PipeWire para substituir PulseAudio e JACK, e o gestor de sessão WirePlumber.
 sudo pacman -S --needed --noconfirm pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
@@ -793,6 +799,6 @@ echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o m
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
+echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
