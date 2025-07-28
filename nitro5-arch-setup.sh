@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.7
+#   Versão: 7.8
 #
-#   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
-#   otimizado para performance e gestão de bateria.
+#   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v7.8: Removidas as etapas de configuração da NVIDIA, aceleração de vídeo, 
+#           PipeWire e EasyEffects a pedido do utilizador.
 #   - v7.7: Adicionada a instalação do Flatpak e do WhatSie.
 #   - v7.6: Removida a Etapa 12 (TLP) a pedido do utilizador.
 #   - v7.5: Removida a Etapa 19 (AMD P-State) a pedido do utilizador.
@@ -23,7 +24,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=19
+TOTAL_STEPS=15
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -115,83 +116,7 @@ else
     yay -Syu --noconfirm
 fi
 
-# 3. CONFIGURAÇÃO DOS GRÁFICOS DEDICADOS (NVIDIA)
-# ========================================================
-section_header "A configurar os drivers para usar a placa NVIDIA dedicada por padrão..."
-ask_confirmation "Esta etapa irá instalar os drivers da NVIDIA e a ferramenta 'envycontrol' para forçar o uso da placa dedicada. Continuar?"
-
-if ! is_installed_pacman nvidia-dkms; then
-    sudo pacman -S --needed --noconfirm nvidia-dkms nvidia-utils lib32-nvidia-utils
-else
-    info "Driver da NVIDIA já está instalado."
-fi
-
-if ! is_installed_yay envycontrol; then
-    yay -S --needed --noconfirm envycontrol
-else
-    info "'envycontrol' já está instalado."
-fi
-
-info "A verificar e definir o modo gráfico para 'NVIDIA' (dedicado)..."
-if [[ $(envycontrol -q) != "nvidia" ]]; then
-    warning "Modo atual não é 'NVIDIA'. A configurar..."
-    sudo envycontrol -s nvidia
-else
-    info "O modo gráfico já está definido como 'NVIDIA'."
-fi
-success "Drivers da NVIDIA e 'envycontrol' configurados para usar a placa dedicada."
-warning "É necessário REINICIAR o sistema para que a alteração tenha efeito."
-
-# 4. CONFIGURAÇÃO DA ACELERAÇÃO DE VÍDEO (HARDWARE)
-# ========================================================
-section_header "A configurar a aceleração de vídeo por hardware (VA-API)..."
-ask_confirmation "Desejas configurar a aceleração de vídeo por hardware?"
-
-info "A instalar utilitários de diagnóstico de vídeo..."
-# 'libva-utils' fornece a ferramenta 'vainfo' para verificar a instalação
-# 'mesa-utils' fornece a ferramenta 'glxinfo' para verificar o renderizador OpenGL
-sudo pacman -S --needed --noconfirm mesa-utils libva-utils
-
-info "A configurar as variáveis de ambiente para a aceleração de vídeo da NVIDIA..."
-ZSHRC_FILE="$HOME/.zshrc"
-BASHRC_FILE="$HOME/.bashrc"
-PROFILE_FILE="$HOME/.profile" # Fallback para outros shells/sessões gráficas
-
-VAR_BLOCK="# NVIDIA VA-API Hardware Acceleration
-export LIBVA_DRIVER_NAME=nvidia
-export GBM_BACKEND=nvidia-drm"
-
-# Função para adicionar o bloco de configuração se não existir
-add_config_if_not_exists() {
-    local file=$1
-    if [ -f "$file" ] && ! grep -q "LIBVA_DRIVER_NAME=nvidia" "$file"; then
-        info "Adicionando configuração da VA-API em $file..."
-        echo -e "\n$VAR_BLOCK" >> "$file"
-    else
-        info "Configuração da VA-API já existe ou o ficheiro $file não foi encontrado."
-    fi
-}
-
-add_config_if_not_exists "$ZSHRC_FILE"
-add_config_if_not_exists "$BASHRC_FILE"
-add_config_if_not_exists "$PROFILE_FILE"
-
-success "Aceleração de vídeo configurada."
-warning "É necessário REINICIAR ou fazer logout/login para que as alterações tenham efeito."
-
-# 5. UNIFICAÇÃO DO SISTEMA DE ÁUDIO (PIPEWIRE)
-# ========================================================
-section_header "A unificar o sistema de áudio para PipeWire..."
-ask_confirmation "Desejas instalar o PipeWire para uma gestão de áudio moderna (recomendado)?"
-
-info "A instalar o PipeWire e a substituir os pacotes de áudio existentes..."
-# Usar o metapacote 'pipewire-audio' é a forma mais robusta de garantir
-# que o PulseAudio seja substituído corretamente sem conflitos.
-sudo pacman -S --needed --noconfirm pipewire-audio
-success "Sistema de áudio configurado com PipeWire."
-
-
-# 6. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
+# 3. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
 # ========================================================
 section_header "A instalar ambientes de programação e ferramentas de linha de comando..."
 ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
@@ -250,7 +175,7 @@ if ! is_installed_pacman jdk-openjdk; then sudo pacman -S --needed --noconfirm j
 
 success "Verificação de ambientes de programação concluída."
 
-# 7. FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
+# 4. FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
 # ========================================================
 section_header "A instalar ferramentas de desenvolvimento e produtividade..."
 ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"
@@ -269,7 +194,7 @@ if ! is_installed_yay insomnia; then yay -S --needed --noconfirm insomnia; else 
 
 success "Verificação de ferramentas de desenvolvimento concluída."
 
-# 8. CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
+# 5. CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
 # ========================================================
 section_header "A configurar um terminal moderno (ZSH + Powerlevel10k)..."
 ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"
@@ -334,7 +259,7 @@ fi
 
 success "Terminal configurado com ZSH + Powerlevel10k."
 
-# 9. APLICAÇÕES ADICIONAIS
+# 6. APLICAÇÕES ADICIONAIS
 # ========================================================
 section_header "A instalar aplicações adicionais..."
 ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
@@ -359,7 +284,7 @@ if ! is_installed_yay jetbrains-toolbox; then yay -S --needed --noconfirm jetbra
 
 success "Verificação de aplicações adicionais concluída."
 
-# 10. A INSTALAR APLICAÇÕES VIA FLATPAK (WHATSIE)
+# 7. A INSTALAR APLICAÇÕES VIA FLATPAK (WHATSIE)
 # ========================================================
 section_header "A instalar aplicações via Flatpak..."
 ask_confirmation "Desejas instalar o WhatSie (cliente WhatsApp) via Flatpak?"
@@ -381,7 +306,7 @@ else
     info "O WhatSie já está instalado."
 fi
 
-# 11. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
+# 8. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
 # ========================================================
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
@@ -454,7 +379,7 @@ fi
 
 success "Verificação de otimizações do sistema concluída."
 
-# 12. INSTALAÇÃO DE CODECS MULTIMÍDIA
+# 9. INSTALAÇÃO DE CODECS MULTIMÍDIA
 # ========================================================
 section_header "A instalar codecs para compatibilidade multimídia..."
 ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstreamer)?"
@@ -463,7 +388,7 @@ ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstr
 sudo pacman -S --needed --noconfirm ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 success "Codecs multimídia instalados."
 
-# 13. CONFIGURAÇÃO DO BLUETOOTH
+# 10. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -477,106 +402,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 14. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
-# ========================================================
-section_header "A configurar a otimização de áudio com EasyEffects..."
-ask_confirmation "Desejas instalar o EasyEffects e um preset padrão para o microfone?"
-
-if ! is_installed_pacman easyeffects; then
-    info "A instalar o EasyEffects..."
-    sudo pacman -S --needed --noconfirm easyeffects
-else
-    info "EasyEffects já está instalado."
-fi
-
-# Verifica se a instalação foi bem-sucedida antes de criar o preset
-if is_installed_pacman easyeffects; then
-    info "A criar um preset otimizado para o microfone..."
-    EASYEFFECTS_INPUT_DIR="$HOME/.config/easyeffects/input"
-    PRESET_FILE="$EASYEFFECTS_INPUT_DIR/Microfone Otimizado.json"
-
-    mkdir -p "$EASYEFFECTS_INPUT_DIR"
-
-    # Cria o ficheiro de preset JSON usando um here-doc
-    cat <<'EOF' > "$PRESET_FILE"
-{
-    "input": {
-        "plugins_order": [
-            "gate",
-            "echo_canceller",
-            "compressor",
-            "equalizer"
-        ]
-    },
-    "gate": {
-        "attack": 20.0,
-        "bypass": false,
-        "dry": 0.0,
-        "input_gain": 0.0,
-        "output_gain": 0.0,
-        "range": -90.0,
-        "ratio": 2.0,
-        "release": 250.0,
-        "threshold": -45.0,
-        "wet": 100.0
-    },
-    "echo_canceller": {
-        "bypass": false,
-        "dry": 0.0,
-        "input_gain": 0.0,
-        "output_gain": 0.0,
-        "wet": 100.0
-    },
-    "compressor": {
-        "attack": 5.0,
-        "bypass": false,
-        "dry": 0.0,
-        "input_gain": 0.0,
-        "knee": 6.0,
-        "output_gain": 6.0,
-        "ratio": 4.0,
-        "release": 100.0,
-        "threshold": -20.0,
-        "wet": 100.0
-    },
-    "equalizer": {
-        "bands": [
-            {
-                "frequency": 120.0,
-                "gain": 3.0,
-                "mode": "RLC (BT, RBJ)",
-                "q": 0.7,
-                "slope": "x1",
-                "type": "Lowshelf",
-                "width": 2.4
-            },
-            {
-                "frequency": 5000.0,
-                "gain": 2.0,
-                "mode": "RLC (BT, RBJ)",
-                "q": 0.7,
-                "slope": "x1",
-                "type": "Highshelf",
-                "width": 2.4
-            }
-        ],
-        "bypass": false,
-        "dry": 0.0,
-        "input_gain": 0.0,
-        "mode": "IIR",
-        "num_bands": 2,
-        "output_gain": 0.0,
-        "split": false,
-        "wet": 100.0
-    }
-}
-EOF
-    success "Preset 'Microfone Otimizado' criado com sucesso."
-    warning "Para usar, abre o EasyEffects, vai para a secção 'Entrada' e seleciona o preset 'Microfone Otimizado'."
-fi
-
-
-# 15. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 11. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -595,7 +421,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 16. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 12. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -613,7 +439,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 17. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 13. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -686,7 +512,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 18. CONFIGURAÇÃO DE ENERGIA
+# 14. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -704,7 +530,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 19. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -730,11 +556,10 @@ echo -e "${C_GREEN}=============================================================
 echo
 info "Resumo e Próximos Passos:"
 echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-echo "    - Após o reinício, os drivers, o novo shell e as novas extensões estarão ativos."
+echo "    - Após o reinício, o novo shell e as novas extensões estarão ativos."
 echo
-echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões e Presets:${C_RESET}"
+echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões:${C_RESET}"
 echo "    - As extensões (Clipboard, Vitals, etc.) podem precisar ser ativadas na app 'Extensões'."
-echo -e "    - Para o áudio, abre o ${C_GREEN}EasyEffects${C_RESET}, vai à secção 'Entrada' e, na área de Presets, seleciona 'Microfone Otimizado'."
 echo
 echo -e "3.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
 echo "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
@@ -749,15 +574,10 @@ echo -e "5.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
 echo "    - Os teus comandos 'ls' e 'cat' agora usarão 'exa' e 'bat' automaticamente."
 echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
 echo
-echo -e "6.  ${C_YELLOW}Gestão da Placa de Vídeo (envycontrol):${C_RESET}"
-echo -e "    - ${C_GREEN}Modo NVIDIA (padrão):${C_RESET} A placa de vídeo dedicada estará sempre ativa para máxima performance."
-echo -e "    - Para mudar para o modo de economia (duração da bateria), executa: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
-echo -e "    - Para mudar para o modo híbrido (equilíbrio), executa: ${C_GREEN}sudo envycontrol -s hybrid${C_RESET} (e reinicia)."
-echo
-echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
+echo -e "6.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
 echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
-echo -e "8.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
+echo -e "7.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
 echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
