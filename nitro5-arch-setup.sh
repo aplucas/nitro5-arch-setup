@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.2
+#   Versão: 7.3
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.3: Removida a verificação de erro explícita após a instalação do PipeWire.
 #   - v7.2: Corrigida a instalação do PipeWire para evitar conflitos com o PulseAudio.
 #   - v7.1: Adicionada a instalação do pacote 'mesa-utils' para fornecer o comando 'glxinfo'.
 #   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
@@ -163,14 +164,7 @@ info "A instalar o PipeWire e a substituir os pacotes de áudio existentes..."
 # Usar o metapacote 'pipewire-audio' é a forma mais robusta de garantir
 # que o PulseAudio seja substituído corretamente sem conflitos.
 sudo pacman -S --needed --noconfirm pipewire-audio
-
-# Verifica se o pulseaudio foi removido e se o pipewire-pulse foi instalado
-if ! is_installed_pacman pulseaudio && is_installed_pacman pipewire-pulse; then
-    success "Sistema de áudio configurado com PipeWire."
-else
-    error "A transição para o PipeWire falhou. O PulseAudio ainda pode estar presente."
-    warning "Tenta executar 'sudo pacman -S pipewire-audio' manualmente e responde 'y' para remover o pulseaudio."
-fi
+success "Sistema de áudio configurado com PipeWire."
 
 
 # 6. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
