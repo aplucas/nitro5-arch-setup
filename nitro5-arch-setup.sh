@@ -5,19 +5,15 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.3
+#   Versão: 7.4
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.4: Corrigida a Etapa 4 para configurar a aceleração de vídeo (VA-API) via variáveis de ambiente.
 #   - v7.3: Removida a verificação de erro explícita após a instalação do PipeWire.
 #   - v7.2: Corrigida a instalação do PipeWire para evitar conflitos com o PulseAudio.
 #   - v7.1: Adicionada a instalação do pacote 'mesa-utils' para fornecer o comando 'glxinfo'.
 #   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
-#   - v6.9: Corrigido o nome do pacote de aceleração de vídeo da NVIDIA (removido o sufixo -git).
-#   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman.
-#   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio'.
-#   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e 'ffmpeg'.
-#   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API).
 #
 # ===================================================================================
 
@@ -145,15 +141,39 @@ warning "É necessário REINICIAR o sistema para que a alteração tenha efeito.
 # 4. CONFIGURAÇÃO DA ACELERAÇÃO DE VÍDEO (HARDWARE)
 # ========================================================
 section_header "A configurar a aceleração de vídeo por hardware (VA-API)..."
-ask_confirmation "Desejas instalar os drivers para aceleração de vídeo e utilitários de diagnóstico?"
+ask_confirmation "Desejas configurar a aceleração de vídeo por hardware?"
 
-info "A instalar os drivers VA-API para a NVIDIA e utilitários de vídeo..."
-# 'nvidia-vaapi-driver' é a implementação recomendada para a aceleração de vídeo em hardware NVIDIA
+info "A instalar utilitários de diagnóstico de vídeo..."
 # 'libva-utils' fornece a ferramenta 'vainfo' para verificar a instalação
 # 'mesa-utils' fornece a ferramenta 'glxinfo' para verificar o renderizador OpenGL
-yay -S --needed --noconfirm mesa-utils libva-utils nvidia-vaapi-driver
-success "Drivers de aceleração e utilitários de vídeo instalados."
-warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alterações tenham efeito."
+sudo pacman -S --needed --noconfirm mesa-utils libva-utils
+
+info "A configurar as variáveis de ambiente para a aceleração de vídeo da NVIDIA..."
+ZSHRC_FILE="$HOME/.zshrc"
+BASHRC_FILE="$HOME/.bashrc"
+PROFILE_FILE="$HOME/.profile" # Fallback para outros shells/sessões gráficas
+
+VAR_BLOCK="# NVIDIA VA-API Hardware Acceleration
+export LIBVA_DRIVER_NAME=nvidia
+export GBM_BACKEND=nvidia-drm"
+
+# Função para adicionar o bloco de configuração se não existir
+add_config_if_not_exists() {
+    local file=$1
+    if [ -f "$file" ] && ! grep -q "LIBVA_DRIVER_NAME=nvidia" "$file"; then
+        info "Adicionando configuração da VA-API em $file..."
+        echo -e "\n$VAR_BLOCK" >> "$file"
+    else
+        info "Configuração da VA-API já existe ou o ficheiro $file não foi encontrado."
+    fi
+}
+
+add_config_if_not_exists "$ZSHRC_FILE"
+add_config_if_not_exists "$BASHRC_FILE"
+add_config_if_not_exists "$PROFILE_FILE"
+
+success "Aceleração de vídeo configurada."
+warning "É necessário REINICIAR ou fazer logout/login para que as alterações tenham efeito."
 
 # 5. UNIFICAÇÃO DO SISTEMA DE ÁUDIO (PIPEWIRE)
 # ========================================================
