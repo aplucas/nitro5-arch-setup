@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.3
+#   Versão: 6.4
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.4: Corrigido conflito invertido onde a instalação do PPD falhava se o TLP já existisse.
 #   - v6.3: Adicionada instalação do EasyEffects e um preset padrão para otimização de microfone.
 #   - v6.2: Corrigido conflito entre 'tlp' e 'power-profiles-daemon'.
 #   - v6.1: Adicionada instalação de Codecs Multimídia e Gestão de Energia com TLP.
@@ -310,13 +311,18 @@ success "Verificação de aplicações adicionais concluída."
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
 
-# Instala o power-profiles-daemon como gestor de energia padrão
-if ! is_installed_pacman power-profiles-daemon; then
-    sudo pacman -S --needed --noconfirm power-profiles-daemon
-    sudo systemctl enable --now power-profiles-daemon.service
+# Instala o power-profiles-daemon como gestor de energia padrão, SE o TLP não estiver instalado
+if ! is_installed_pacman tlp; then
+    if ! is_installed_pacman power-profiles-daemon; then
+        sudo pacman -S --needed --noconfirm power-profiles-daemon
+        sudo systemctl enable --now power-profiles-daemon.service
+    else
+        info "'power-profiles-daemon' já instalado e ativo."
+    fi
 else
-    info "'power-profiles-daemon' já instalado e ativo."
+    warning "O TLP já está instalado. A saltar a instalação do 'power-profiles-daemon'."
 fi
+
 
 if ! is_installed_yay nbfc-linux-git; then
     yay -S --needed --noconfirm nbfc-linux-git
@@ -766,6 +772,6 @@ echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o m
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
+echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
