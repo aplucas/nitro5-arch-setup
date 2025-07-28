@@ -5,13 +5,13 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.6
+#   Versão: 7.7
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.7: Adicionada a instalação do Flatpak e do WhatSie.
 #   - v7.6: Removida a Etapa 12 (TLP) a pedido do utilizador.
 #   - v7.5: Removida a Etapa 19 (AMD P-State) a pedido do utilizador.
-#   - v7.4: Corrigida a Etapa 4 para configurar a aceleração de vídeo (VA-API) via variáveis de ambiente.
 #
 # ===================================================================================
 
@@ -23,7 +23,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=18
+TOTAL_STEPS=19
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -58,6 +58,12 @@ is_installed_pacman() {
 is_installed_yay() {
     yay -Q "$1" &> /dev/null
 }
+
+# Verifica se uma aplicação está instalada via flatpak
+is_installed_flatpak() {
+    flatpak list | grep -q "$1"
+}
+
 
 ask_confirmation() {
     # Se a variável de ambiente YES for 'true', pula a pergunta.
@@ -353,7 +359,29 @@ if ! is_installed_yay jetbrains-toolbox; then yay -S --needed --noconfirm jetbra
 
 success "Verificação de aplicações adicionais concluída."
 
-# 10. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
+# 10. A INSTALAR APLICAÇÕES VIA FLATPAK (WHATSIE)
+# ========================================================
+section_header "A instalar aplicações via Flatpak..."
+ask_confirmation "Desejas instalar o WhatSie (cliente WhatsApp) via Flatpak?"
+
+# Instala o Flatpak se não estiver instalado
+if ! is_installed_pacman flatpak; then
+    info "A instalar o Flatpak..."
+    sudo pacman -S --needed --noconfirm flatpak
+else
+    info "O Flatpak já está instalado."
+fi
+
+# Instala o WhatSie
+if ! is_installed_flatpak "io.github.mimbrero.WhatsSie"; then
+    info "A instalar o WhatSie via Flatpak..."
+    sudo flatpak install --noninteractive --system flathub io.github.mimbrero.WhatsSie
+    success "WhatSie instalado com sucesso."
+else
+    info "O WhatSie já está instalado."
+fi
+
+# 11. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
 # ========================================================
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
@@ -426,7 +454,7 @@ fi
 
 success "Verificação de otimizações do sistema concluída."
 
-# 11. INSTALAÇÃO DE CODECS MULTIMÍDIA
+# 12. INSTALAÇÃO DE CODECS MULTIMÍDIA
 # ========================================================
 section_header "A instalar codecs para compatibilidade multimídia..."
 ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstreamer)?"
@@ -435,7 +463,7 @@ ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstr
 sudo pacman -S --needed --noconfirm ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 success "Codecs multimídia instalados."
 
-# 12. CONFIGURAÇÃO DO BLUETOOTH
+# 13. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -449,7 +477,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 13. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
+# 14. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
 # ========================================================
 section_header "A configurar a otimização de áudio com EasyEffects..."
 ask_confirmation "Desejas instalar o EasyEffects e um preset padrão para o microfone?"
@@ -548,7 +576,7 @@ EOF
 fi
 
 
-# 14. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 15. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -567,7 +595,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 15. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 16. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -585,7 +613,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 16. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 17. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -658,7 +686,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 17. CONFIGURAÇÃO DE ENERGIA
+# 18. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -676,7 +704,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 18. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 19. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
