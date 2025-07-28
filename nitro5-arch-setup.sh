@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.1
+#   Versão: 7.2
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.2: Corrigida a instalação do PipeWire para evitar conflitos com o PulseAudio.
 #   - v7.1: Adicionada a instalação do pacote 'mesa-utils' para fornecer o comando 'glxinfo'.
 #   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
 #   - v6.9: Corrigido o nome do pacote de aceleração de vídeo da NVIDIA (removido o sufixo -git).
@@ -158,11 +159,18 @@ warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alt
 section_header "A unificar o sistema de áudio para PipeWire..."
 ask_confirmation "Desejas instalar o PipeWire para uma gestão de áudio moderna (recomendado)?"
 
-# Instala o conjunto completo do PipeWire. O pacman irá lidar com a substituição
-# do pulseaudio por pipewire-pulse automaticamente, graças à flag --noconfirm.
 info "A instalar o PipeWire e a substituir os pacotes de áudio existentes..."
-sudo pacman -S --needed --noconfirm pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
-success "Sistema de áudio configurado com PipeWire."
+# Usar o metapacote 'pipewire-audio' é a forma mais robusta de garantir
+# que o PulseAudio seja substituído corretamente sem conflitos.
+sudo pacman -S --needed --noconfirm pipewire-audio
+
+# Verifica se o pulseaudio foi removido e se o pipewire-pulse foi instalado
+if ! is_installed_pacman pulseaudio && is_installed_pacman pipewire-pulse; then
+    success "Sistema de áudio configurado com PipeWire."
+else
+    error "A transição para o PipeWire falhou. O PulseAudio ainda pode estar presente."
+    warning "Tenta executar 'sudo pacman -S pipewire-audio' manualmente e responde 'y' para remover o pulseaudio."
+fi
 
 
 # 6. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
