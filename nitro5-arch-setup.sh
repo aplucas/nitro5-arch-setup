@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 4.8
+#   Versão: 4.9
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v4.9: Adicionada instalação do Angry IP Scanner (ipscan).
 #   - v4.8: Adicionada deteção automática de GRUB/systemd-boot para ativar o modo Performance.
 #   - v4.7: Adicionada configuração de auto-save no VS Code.
 #   - v4.6: Adicionada opção para ativar o serviço do RustDesk no arranque.
@@ -287,7 +288,7 @@ success "Terminal configurado com ZSH + Powerlevel10k."
 # 7. APLICAÇÕES ADICIONAIS
 # ========================================================
 info "A instalar aplicações adicionais..."
-ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
+ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
 
 # Instalação do LunarVim através do AUR, que é o método correto para Arch
 info "A instalar LunarVim (via AUR)..."
@@ -300,6 +301,7 @@ fi
 if ! is_installed_pacman obsidian; then sudo pacman -S --needed --noconfirm obsidian; else info "Obsidian já instalado."; fi
 if ! is_installed_yay rustdesk-bin; then yay -S --needed --noconfirm rustdesk-bin; else info "RustDesk já instalado."; fi
 if ! is_installed_yay freetube-bin; then yay -S --needed --noconfirm freetube-bin; else info "FreeTube já instalado."; fi
+if ! is_installed_yay angryipscanner; then yay -S --needed --noconfirm angryipscanner; else info "Angry IP Scanner já instalado."; fi
 if ! is_installed_yay brave-bin; then yay -S --needed --noconfirm brave-bin; else info "Brave Browser já instalado."; fi
 if ! is_installed_yay google-chrome; then yay -S --needed --noconfirm google-chrome; else info "Google Chrome já instalado."; fi
 if ! is_installed_yay microsoft-edge-stable-bin; then yay -S --needed --noconfirm microsoft-edge-stable-bin; else info "Microsoft Edge já instalado."; fi
