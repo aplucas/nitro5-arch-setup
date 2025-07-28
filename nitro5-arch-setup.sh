@@ -5,16 +5,13 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.5
+#   Versão: 7.6
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.6: Removida a Etapa 12 (TLP) a pedido do utilizador.
 #   - v7.5: Removida a Etapa 19 (AMD P-State) a pedido do utilizador.
 #   - v7.4: Corrigida a Etapa 4 para configurar a aceleração de vídeo (VA-API) via variáveis de ambiente.
-#   - v7.3: Removida a verificação de erro explícita após a instalação do PipeWire.
-#   - v7.2: Corrigida a instalação do PipeWire para evitar conflitos com o PulseAudio.
-#   - v7.1: Adicionada a instalação do pacote 'mesa-utils' para fornecer o comando 'glxinfo'.
-#   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
 #
 # ===================================================================================
 
@@ -26,7 +23,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=19
+TOTAL_STEPS=18
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -361,18 +358,14 @@ success "Verificação de aplicações adicionais concluída."
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
 
-# Instala o power-profiles-daemon como gestor de energia padrão, SE o TLP não estiver instalado
-if ! is_installed_pacman tlp; then
-    if ! is_installed_pacman power-profiles-daemon; then
-        sudo pacman -S --needed --noconfirm power-profiles-daemon
-        sudo systemctl enable --now power-profiles-daemon.service
-    else
-        info "'power-profiles-daemon' já instalado e ativo."
-    fi
+# Instala o power-profiles-daemon como gestor de energia padrão
+if ! is_installed_pacman power-profiles-daemon; then
+    info "A instalar o gestor de energia padrão (power-profiles-daemon)..."
+    sudo pacman -S --needed --noconfirm power-profiles-daemon
+    sudo systemctl enable --now power-profiles-daemon.service
 else
-    warning "O TLP já está instalado. A saltar a instalação do 'power-profiles-daemon'."
+    info "'power-profiles-daemon' já instalado e ativo."
 fi
-
 
 if ! is_installed_yay nbfc-linux-git; then
     yay -S --needed --noconfirm nbfc-linux-git
@@ -442,42 +435,7 @@ ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstr
 sudo pacman -S --needed --noconfirm ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 success "Codecs multimídia instalados."
 
-# 12. GESTÃO AVANÇADA DE ENERGIA (TLP)
-# ========================================================
-section_header "A configurar a gestão avançada de energia para notebooks (TLP)..."
-
-# Pergunta ao utilizador, mas não sai do script se a resposta for 'não'.
-read -p "$(echo -e "${C_YELLOW}[PERGUNTA]${C_RESET} Desejas instalar o TLP para uma gestão de bateria mais avançada? (Isto irá substituir 'power-profiles-daemon') [S/n] ")" -n 1 -r
-echo
-if [[ $REPLY =~ ^[Ss]$ || $REPLY == "" ]]; then
-    # O utilizador quer instalar o TLP
-    if ! is_installed_pacman tlp; then
-        # Remove o power-profiles-daemon para evitar conflitos
-        if is_installed_pacman power-profiles-daemon; then
-            warning "A remover 'power-profiles-daemon' para instalar o TLP..."
-            sudo systemctl stop power-profiles-daemon.service
-            sudo pacman -Rns --noconfirm power-profiles-daemon
-        fi
-
-        info "A instalar o TLP e o seu gestor de rádio..."
-        sudo pacman -S --needed --noconfirm tlp tlp-rdw
-        
-        # Verifica se a instalação foi bem-sucedida antes de ativar o serviço
-        if is_installed_pacman tlp; then
-            info "A ativar o serviço do TLP..."
-            sudo systemctl enable --now tlp.service
-            success "TLP instalado e ativado."
-        else
-            error "A instalação do TLP falhou. A saltar a ativação do serviço."
-        fi
-    else
-        info "TLP já está instalado."
-    fi
-else
-    info "A saltar a instalação do TLP. O 'power-profiles-daemon' será mantido."
-fi
-
-# 13. CONFIGURAÇÃO DO BLUETOOTH
+# 12. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -491,7 +449,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 14. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
+# 13. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
 # ========================================================
 section_header "A configurar a otimização de áudio com EasyEffects..."
 ask_confirmation "Desejas instalar o EasyEffects e um preset padrão para o microfone?"
@@ -590,7 +548,7 @@ EOF
 fi
 
 
-# 15. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 14. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -609,7 +567,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 16. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 15. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -627,7 +585,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 17. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 16. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -700,7 +658,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 18. CONFIGURAÇÃO DE ENERGIA
+# 17. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -718,7 +676,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 19. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 18. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
