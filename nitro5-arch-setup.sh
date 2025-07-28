@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.0
+#   Versão: 7.1
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.1: Adicionada a instalação do pacote 'mesa-utils' para fornecer o comando 'glxinfo'.
 #   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
 #   - v6.9: Corrigido o nome do pacote de aceleração de vídeo da NVIDIA (removido o sufixo -git).
 #   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman.
@@ -142,13 +143,14 @@ warning "É necessário REINICIAR o sistema para que a alteração tenha efeito.
 # 4. CONFIGURAÇÃO DA ACELERAÇÃO DE VÍDEO (HARDWARE)
 # ========================================================
 section_header "A configurar a aceleração de vídeo por hardware (VA-API)..."
-ask_confirmation "Desejas instalar os drivers para aceleração de vídeo (essencial para navegadores e players)?"
+ask_confirmation "Desejas instalar os drivers para aceleração de vídeo e utilitários de diagnóstico?"
 
-info "A instalar os drivers VA-API para a NVIDIA..."
+info "A instalar os drivers VA-API para a NVIDIA e utilitários de vídeo..."
 # 'nvidia-vaapi-driver' é a implementação recomendada para a aceleração de vídeo em hardware NVIDIA
 # 'libva-utils' fornece a ferramenta 'vainfo' para verificar a instalação
-yay -S --needed --noconfirm libva-utils nvidia-vaapi-driver
-success "Drivers de aceleração de vídeo instalados."
+# 'mesa-utils' fornece a ferramenta 'glxinfo' para verificar o renderizador OpenGL
+yay -S --needed --noconfirm mesa-utils libva-utils nvidia-vaapi-driver
+success "Drivers de aceleração e utilitários de vídeo instalados."
 warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alterações tenham efeito."
 
 # 5. UNIFICAÇÃO DO SISTEMA DE ÁUDIO (PIPEWIRE)
