@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.9
+#   Versão: 7.0
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v7.0: Alterado o modo gráfico padrão para 'NVIDIA' (dedicada) em vez de 'híbrido'.
 #   - v6.9: Corrigido o nome do pacote de aceleração de vídeo da NVIDIA (removido o sufixo -git).
 #   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman.
 #   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio'.
@@ -111,10 +112,10 @@ else
     yay -Syu --noconfirm
 fi
 
-# 3. CONFIGURAÇÃO DOS GRÁFICOS HÍBRIDOS (NVIDIA)
+# 3. CONFIGURAÇÃO DOS GRÁFICOS DEDICADOS (NVIDIA)
 # ========================================================
-section_header "A configurar os drivers da NVIDIA para gráficos híbridos..."
-ask_confirmation "Esta etapa irá instalar os drivers da NVIDIA e a ferramenta 'envycontrol'. Continuar?"
+section_header "A configurar os drivers para usar a placa NVIDIA dedicada por padrão..."
+ask_confirmation "Esta etapa irá instalar os drivers da NVIDIA e a ferramenta 'envycontrol' para forçar o uso da placa dedicada. Continuar?"
 
 if ! is_installed_pacman nvidia-dkms; then
     sudo pacman -S --needed --noconfirm nvidia-dkms nvidia-utils lib32-nvidia-utils
@@ -128,15 +129,15 @@ else
     info "'envycontrol' já está instalado."
 fi
 
-info "A verificar e definir o modo gráfico para 'híbrido'..."
-if [[ $(envycontrol -q) != "hybrid" ]]; then
-    warning "Modo atual não é 'híbrido'. A configurar..."
-    sudo envycontrol -s hybrid
+info "A verificar e definir o modo gráfico para 'NVIDIA' (dedicado)..."
+if [[ $(envycontrol -q) != "nvidia" ]]; then
+    warning "Modo atual não é 'NVIDIA'. A configurar..."
+    sudo envycontrol -s nvidia
 else
-    info "O modo gráfico já está definido como 'híbrido'."
+    info "O modo gráfico já está definido como 'NVIDIA'."
 fi
-success "Drivers da NVIDIA e 'envycontrol' configurados."
-warning "É necessário REINICIAR o sistema para que os drivers da NVIDIA funcionem corretamente."
+success "Drivers da NVIDIA e 'envycontrol' configurados para usar a placa dedicada."
+warning "É necessário REINICIAR o sistema para que a alteração tenha efeito."
 
 # 4. CONFIGURAÇÃO DA ACELERAÇÃO DE VÍDEO (HARDWARE)
 # ========================================================
@@ -785,8 +786,9 @@ echo "    - Os teus comandos 'ls' e 'cat' agora usarão 'exa' e 'bat' automatica
 echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
 echo
 echo -e "6.  ${C_YELLOW}Gestão da Placa de Vídeo (envycontrol):${C_RESET}"
-echo "    - Modo Híbrido (atual): 'prime-run <comando>' para usar a NVIDIA."
-echo "    - Modo de Economia: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
+echo -e "    - ${C_GREEN}Modo NVIDIA (padrão):${C_RESET} A placa de vídeo dedicada estará sempre ativa para máxima performance."
+echo -e "    - Para mudar para o modo de economia (duração da bateria), executa: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
+echo -e "    - Para mudar para o modo híbrido (equilíbrio), executa: ${C_GREEN}sudo envycontrol -s hybrid${C_RESET} (e reinicia)."
 echo
 echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
 echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
