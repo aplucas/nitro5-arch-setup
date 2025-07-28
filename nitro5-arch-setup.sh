@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 4.6
+#   Versão: 4.7
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v4.7: Adicionada configuração de auto-save no VS Code.
 #   - v4.6: Adicionada opção para ativar o serviço do RustDesk no arranque.
 #   - v4.5: Adicionada configuração automática da fonte 'MesloLGS NF' no VS Code.
 #   - v4.4: Adicionada etapa para ativar o modo Performance (AMD P-State).
@@ -432,7 +433,7 @@ fi
 # 12. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 info "A aplicar configurações pessoais..."
-ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e a fonte do VS Code?"
+ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
 
 # Instala o Firefox se necessário
 if ! is_installed_pacman firefox; then
@@ -464,27 +465,31 @@ else
     info "Email do Git já está configurado."
 fi
 
-# Configura a fonte do VS Code se ele estiver instalado
+# Configura a fonte e o auto-save do VS Code se ele estiver instalado
 if is_installed_yay visual-studio-code-bin; then
     VSCODE_SETTINGS_FILE="$HOME/.config/Code/User/settings.json"
     VSCODE_SETTINGS_DIR=$(dirname "$VSCODE_SETTINGS_FILE")
     FONT_FAMILY="MesloLGS NF, monospace"
+    AUTO_SAVE_SETTING="afterDelay"
 
-    # Ensure the directory and a base settings file exist
+    # Garante que o diretório e um ficheiro de configurações base existem
     mkdir -p "$VSCODE_SETTINGS_DIR"
     if [ ! -f "$VSCODE_SETTINGS_FILE" ]; then
         echo "{}" > "$VSCODE_SETTINGS_FILE"
     fi
 
-    # Check if font settings are already correct
+    # Verifica as configurações atuais
     current_editor_font=$(jq -r '."editor.fontFamily"' "$VSCODE_SETTINGS_FILE")
     current_terminal_font=$(jq -r '."terminal.integrated.fontFamily"' "$VSCODE_SETTINGS_FILE")
+    current_auto_save=$(jq -r '."files.autoSave"' "$VSCODE_SETTINGS_FILE")
 
-    if [[ "$current_editor_font" != "$FONT_FAMILY" || "$current_terminal_font" != "$FONT_FAMILY" ]]; then
-        info "A configurar a fonte MesloLGS NF no VS Code..."
-        jq --arg font "$FONT_FAMILY" '."editor.fontFamily" = $font | ."terminal.integrated.fontFamily" = $font' "$VSCODE_SETTINGS_FILE" > /tmp/vscode_settings.tmp && mv /tmp/vscode_settings.tmp "$VSCODE_SETTINGS_FILE"
+    if [[ "$current_editor_font" != "$FONT_FAMILY" || "$current_terminal_font" != "$FONT_FAMILY" || "$current_auto_save" != "$AUTO_SAVE_SETTING" ]]; then
+        info "A configurar a fonte e o auto-save no VS Code..."
+        jq --arg font "$FONT_FAMILY" --arg autosave "$AUTO_SAVE_SETTING" \
+           '."editor.fontFamily" = $font | ."terminal.integrated.fontFamily" = $font | ."files.autoSave" = $autosave' \
+           "$VSCODE_SETTINGS_FILE" > /tmp/vscode_settings.tmp && mv /tmp/vscode_settings.tmp "$VSCODE_SETTINGS_FILE"
     else
-        info "Fonte do VS Code já está configurada."
+        info "Fonte e auto-save do VS Code já estão configurados."
     fi
 fi
 success "Configurações pessoais aplicadas."
