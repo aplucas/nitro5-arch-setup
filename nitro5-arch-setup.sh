@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 4.7
+#   Versão: 4.8
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v4.8: Adicionada deteção automática de GRUB/systemd-boot para ativar o modo Performance.
 #   - v4.7: Adicionada configuração de auto-save no VS Code.
 #   - v4.6: Adicionada opção para ativar o serviço do RustDesk no arranque.
 #   - v4.5: Adicionada configuração automática da fonte 'MesloLGS NF' no VS Code.
@@ -518,16 +519,47 @@ success "Gestão de energia configurada."
 info "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
 
-GRUB_FILE="/etc/default/grub"
-if ! grep -q "amd_pstate=active" "$GRUB_FILE"; then
-    info "A adicionar o parâmetro do kernel 'amd_pstate=active'..."
-    sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 amd_pstate=active"/' "$GRUB_FILE"
-    info "A regenerar a configuração do GRUB..."
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
-    success "AMD P-State ativado. O modo 'Performance' estará disponível após o reinício."
+# Deteta o gestor de arranque
+if [ -d "/boot/grub" ]; then
+    BOOTLOADER="grub"
+elif [ -d "/boot/loader" ]; then
+    BOOTLOADER="systemd-boot"
 else
-    info "O AMD P-State já está ativado na configuração do GRUB."
+    BOOTLOADER="unknown"
 fi
+
+case "$BOOTLOADER" in
+    grub)
+        GRUB_FILE="/etc/default/grub"
+        if ! grep -q "amd_pstate=guided" "$GRUB_FILE"; then
+            info "Detetado GRUB. A adicionar o parâmetro do kernel 'amd_pstate=guided'..."
+            sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 amd_pstate=guided"/' "$GRUB_FILE"
+            info "A regenerar a configuração do GRUB..."
+            sudo grub-mkconfig -o /boot/grub/grub.cfg
+            success "AMD P-State ativado para GRUB. Estará disponível após o reinício."
+        else
+            info "O AMD P-State já está ativado na configuração do GRUB."
+        fi
+        ;;
+    systemd-boot)
+        ENTRY_FILE=$(find /boot/loader/entries -maxdepth 1 -type f -name "*.conf" | head -n 1)
+        if [ -n "$ENTRY_FILE" ]; then
+            if ! grep -q "amd_pstate=guided" "$ENTRY_FILE"; then
+                info "Detetado systemd-boot. A adicionar 'amd_pstate=guided' a $ENTRY_FILE..."
+                sudo sed -i '/^options/ s/$/ amd_pstate=guided/' "$ENTRY_FILE"
+                success "Parâmetro do kernel adicionado para systemd-boot. Estará disponível após o reinício."
+            else
+                info "O AMD P-State já está ativado em $ENTRY_FILE."
+            fi
+        else
+            warning "Não foi encontrado nenhum ficheiro de entrada .conf em /boot/loader/entries/."
+        fi
+        ;;
+    *)
+        warning "Não foi possível detetar o gestor de arranque (GRUB ou systemd-boot). A ativação do AMD P-State terá de ser feita manualmente."
+        ;;
+esac
+
 
 # 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
