@@ -5,13 +5,14 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.8
+#   Versão: 6.9
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
-#   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman, evitando erros de dependência.
-#   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio', automatizando a remoção do pulseaudio.
-#   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e adicionado 'ffmpeg' aos codecs.
+#   - v6.9: Corrigido o nome do pacote de aceleração de vídeo da NVIDIA (removido o sufixo -git).
+#   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman.
+#   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio'.
+#   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e 'ffmpeg'.
 #   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API).
 #
 # ===================================================================================
@@ -143,9 +144,9 @@ section_header "A configurar a aceleração de vídeo por hardware (VA-API)..."
 ask_confirmation "Desejas instalar os drivers para aceleração de vídeo (essencial para navegadores e players)?"
 
 info "A instalar os drivers VA-API para a NVIDIA..."
-# 'nvidia-vaapi-driver-git' é a implementação recomendada para a aceleração de vídeo em hardware NVIDIA
+# 'nvidia-vaapi-driver' é a implementação recomendada para a aceleração de vídeo em hardware NVIDIA
 # 'libva-utils' fornece a ferramenta 'vainfo' para verificar a instalação
-yay -S --needed --noconfirm libva-utils nvidia-vaapi-driver-git
+yay -S --needed --noconfirm libva-utils nvidia-vaapi-driver
 success "Drivers de aceleração de vídeo instalados."
 warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alterações tenham efeito."
 
@@ -772,8 +773,8 @@ echo -e "    - Para o áudio, abre o ${C_GREEN}EasyEffects${C_RESET}, vai à sec
 echo
 echo -e "3.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
 echo "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
-echo -e "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
-echo -e "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
+echo "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
+echo "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
 echo
 echo -e "4.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
 echo "    - Instala a app 'KDE Connect' no teu Android a partir da Play Store."
@@ -781,7 +782,7 @@ echo "    - Certifica-te que ambos os dispositivos estão na mesma rede Wi-Fi e 
 echo
 echo -e "5.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
 echo "    - Os teus comandos 'ls' e 'cat' agora usarão 'exa' e 'bat' automaticamente."
-echo -e "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
+echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
 echo
 echo -e "6.  ${C_YELLOW}Gestão da Placa de Vídeo (envycontrol):${C_RESET}"
 echo "    - Modo Híbrido (atual): 'prime-run <comando>' para usar a NVIDIA."
