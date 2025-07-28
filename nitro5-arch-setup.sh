@@ -5,32 +5,16 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.0
+#   Versão: 6.1
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.1: Adicionada instalação de Codecs Multimídia e Gestão de Energia com TLP.
 #   - v6.0: Removida a etapa de instalação do NitroSense.
 #   - v5.9: Alterada a instalação do NitroSense para usar o repositório GitHub diretamente.
 #   - v5.8: Adicionada instalação do utilitário NitroSense para controlo de ventoinhas.
 #   - v5.7: Tornada a configuração do Git interativa para não usar dados do autor por defeito.
 #   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
-#   - v5.5: Corrigida a instalação da CLI do Gemini usando o pacote 'gemi-cli' do npm.
-#   - v5.4: Substituída a instalação da CLI do Gemini de pipx para npm (gemini-cli).
-#   - v5.3: Adicionada instalação da ferramenta de linha de comando do Google Gemini.
-#   - v5.2: Otimizada a verificação do shell padrão para evitar pedidos de senha desnecessários.
-#   - v5.1: Adicionado indicador de progresso das etapas.
-#   - v5.0: Corrigido o nome do pacote do Angry IP Scanner (de 'angryipscanner' para 'ipscan').
-#   - v4.9: Adicionada instalação do Angry IP Scanner (ipscan).
-#   - v4.8: Adicionada deteção automática de GRUB/systemd-boot para ativar o modo Performance.
-#   - v4.7: Adicionada configuração de auto-save no VS Code.
-#   - v4.6: Adicionada opção para ativar o serviço do RustDesk no arranque.
-#   - v4.5: Adicionada configuração automática da fonte 'MesloLGS NF' no VS Code.
-#   - v4.4: Adicionada etapa para ativar o modo Performance (AMD P-State).
-#   - v4.3: Adicionada configuração do Firefox como padrão e definições globais do Git.
-#   - v4.2: Adicionada etapa para configurar a gestão de energia (suspensão e ecrã).
-#   - v4.1: Adicionada instalação do RustDesk.
-#   - v4.0: Corrigida instalação do gnome-network-displays (movido para o AUR).
-#   - v3.9: Substituída a extensão de clipboard 'Pano' (com erro de compilação) por 'Clipboard History'.
 #
 # ===================================================================================
 
@@ -42,7 +26,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=15
+TOTAL_STEPS=17
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -394,7 +378,33 @@ fi
 
 success "Verificação de otimizações do sistema concluída."
 
-# 9. CONFIGURAÇÃO DO BLUETOOTH
+# 9. INSTALAÇÃO DE CODECS MULTIMÍDIA
+# ========================================================
+section_header "A instalar codecs para compatibilidade multimídia..."
+ask_confirmation "Desejas instalar os pacotes de codecs essenciais (gstreamer, libavcodec)?"
+
+# Pacotes GStreamer para a maioria das aplicações e codecs para vídeo
+sudo pacman -S --needed --noconfirm gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+success "Codecs multimídia instalados."
+
+# 10. GESTÃO AVANÇADA DE ENERGIA (TLP)
+# ========================================================
+section_header "A configurar a gestão avançada de energia para notebooks (TLP)..."
+ask_confirmation "Desejas instalar o TLP para otimizar a duração da bateria?"
+
+if ! is_installed_pacman tlp; then
+    info "A instalar o TLP e o seu gestor de rádio..."
+    sudo pacman -S --needed --noconfirm tlp tlp-rdw
+    info "A ativar o serviço do TLP..."
+    # O serviço do TLP mascara outros serviços que podem entrar em conflito.
+    sudo systemctl enable tlp.service
+    sudo systemctl start tlp.service
+    success "TLP instalado e ativado. As otimizações serão aplicadas automaticamente."
+else
+    info "TLP já está instalado."
+fi
+
+# 11. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -408,7 +418,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 10. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 12. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -427,7 +437,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 11. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 13. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -445,7 +455,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 12. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 14. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -518,7 +528,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 13. CONFIGURAÇÃO DE ENERGIA
+# 15. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -536,7 +546,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 14. ATIVAR MODO PERFORMANCE (AMD P-STATE)
+# 16. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
 section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
@@ -583,7 +593,7 @@ case "$BOOTLOADER" in
 esac
 
 
-# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 17. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -633,10 +643,10 @@ echo "    - Modo Híbrido (atual): 'prime-run <comando>' para usar a NVIDIA."
 echo "    - Modo de Economia: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
 echo
 echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
-echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
+echo -e "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
 echo -e "8.  ${C_YELLOW}Modo Performance:${C_RESET}"
-echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
+echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
