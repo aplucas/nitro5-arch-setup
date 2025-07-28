@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 5.1
+#   Versão: 5.2
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.2: Otimizada a verificação do shell padrão para evitar pedidos de senha desnecessários.
 #   - v5.1: Adicionado indicador de progresso das etapas.
 #   - v5.0: Corrigido o nome do pacote do Angry IP Scanner (de 'angryipscanner' para 'ipscan').
 #   - v4.9: Adicionada instalação do Angry IP Scanner (ipscan).
@@ -284,9 +285,15 @@ alias ls='exa --icons'
 
 EOF
 
-if [ "$SHELL" != "/bin/zsh" ]; then
-    chsh -s $(which zsh)
+# Verifica o shell padrão de forma robusta e altera apenas se necessário
+CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
+ZSH_PATH=$(which zsh)
+if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+    info "A alterar o shell padrão para ZSH..."
+    chsh -s "$ZSH_PATH"
     warning "O teu shell padrão foi alterado para ZSH. A alteração terá efeito no próximo login."
+else
+    info "O ZSH já é o shell padrão."
 fi
 
 success "Terminal configurado com ZSH + Powerlevel10k."
