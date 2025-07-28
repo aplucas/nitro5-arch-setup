@@ -5,10 +5,12 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.4
+#   Versão: 5.6
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
+#   - v5.5: Corrigida a instalação da CLI do Gemini usando o pacote 'gemi-cli' do npm.
 #   - v5.4: Substituída a instalação da CLI do Gemini de pipx para npm (gemini-cli).
 #   - v5.3: Adicionada instalação da ferramenta de linha de comando do Google Gemini.
 #   - v5.2: Otimizada a verificação do shell padrão para evitar pedidos de senha desnecessários.
@@ -199,9 +201,9 @@ export NVM_DIR="$HOME/.nvm"
 # Gemini CLI (via npm)
 info "A instalar a ferramenta de linha de comando do Google Gemini (via npm)..."
 if ! command -v gemini &> /dev/null; then
-    npm install -g gemini-cli
+    npm install -g @google/gemini-cli
 else
-    info "Gemini CLI já está instalado."
+    info "Google Gemini CLI já está instalado."
 fi
 
 # Rust (usando rustup)
@@ -646,7 +648,7 @@ echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, 
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo -e "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-echo -e "    - Executa no terminal: ${C_GREEN}gemini auth <A_TUA_API_KEY>${C_RESET}"
+echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 
