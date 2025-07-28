@@ -5,10 +5,12 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.8
+#   Versão: 6.0
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.0: Removida a etapa de instalação do NitroSense.
+#   - v5.9: Alterada a instalação do NitroSense para usar o repositório GitHub diretamente.
 #   - v5.8: Adicionada instalação do utilitário NitroSense para controlo de ventoinhas.
 #   - v5.7: Tornada a configuração do Git interativa para não usar dados do autor por defeito.
 #   - v5.6: Corrigida a instalação da CLI do Gemini para usar o pacote oficial @google/gemini-cli.
@@ -29,25 +31,6 @@
 #   - v4.1: Adicionada instalação do RustDesk.
 #   - v4.0: Corrigida instalação do gnome-network-displays (movido para o AUR).
 #   - v3.9: Substituída a extensão de clipboard 'Pano' (com erro de compilação) por 'Clipboard History'.
-#   - v3.8: Otimizada a etapa de configuração da GPU para não ser executada desnecessariamente.
-#   - v3.7: Adicionada ferramenta de espelhamento de ecrã (gnome-network-displays).
-#   - v3.6: Adicionada instalação do Obsidian.
-#   - v3.5: Corrigidos nomes de pacotes de extensões GNOME (Pano e PiP) no AUR.
-#   - v3.4: Corrigida instalação do LunarVim usando o pacote do AUR para evitar erros de pip.
-#   - v3.3: Corrigida instalação do GSConnect (movido para o AUR).
-#   - v3.2: Corrigida instalação de extensões GNOME (Clipboard e PiP) movendo para o AUR.
-#   - v3.1: Corrigido erro 'externally-managed-environment' ao instalar LunarVim.
-#   - v3.0: Corrigidas cores na mensagem final; Adicionado layout de teclado US-Intl.
-#   - v2.9: Adicionada instalação do FreeTube.
-#   - v2.8: Adicionada atualização do pip e instalação do Brave Browser.
-#   - v2.7: Adicionadas extensões para Tiling de Janelas (Pop Shell) e Picture-in-Picture.
-#   - v2.6: Adicionada instalação do KDE Connect e integração GSConnect para o GNOME.
-#   - v2.5: Adicionadas extensões GNOME para clipboard e monitor de sistema.
-#   - v2.4: Adicionado suporte para AppIndicator/ícones de bandeja no GNOME.
-#   - v2.3: Adicionada instalação de ferramentas Rust (exa, bat, ytop) e aliases.
-#   - v2.2: Tornou o script idempotente (pode ser executado várias vezes).
-#   - v2.1: Adicionada etapa de configuração do Bluetooth.
-#   - v2.0: Adicionado terminal ZSH+Powerlevel10k e novas aplicações.
 #
 # ===================================================================================
 
@@ -59,7 +42,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=16
+TOTAL_STEPS=15
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -409,26 +392,9 @@ else
     info "Ferramenta Network Displays já instalada."
 fi
 
-
 success "Verificação de otimizações do sistema concluída."
 
-# 9. INSTALAÇÃO DO ACER NITROSENSE
-# ========================================================
-section_header "A instalar o utilitário Acer NitroSense..."
-ask_confirmation "Desejas instalar o NitroSense para controlo de ventoinhas e perfis de energia?"
-
-if ! is_installed_yay nitrosense-git; then
-    info "A instalar o NitroSense (via AUR)..."
-    yay -S --needed --noconfirm nitrosense-git
-    info "A ativar o serviço do NitroSense..."
-    sudo systemctl enable --now nitrosense.service
-    success "NitroSense instalado e ativado com sucesso."
-else
-    info "NitroSense já está instalado."
-fi
-
-
-# 10. CONFIGURAÇÃO DO BLUETOOTH
+# 9. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
@@ -442,7 +408,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 11. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 10. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -461,7 +427,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 12. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 11. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -479,7 +445,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 13. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 12. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -552,7 +518,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 14. CONFIGURAÇÃO DE ENERGIA
+# 13. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -570,7 +536,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 15. ATIVAR MODO PERFORMANCE (AMD P-STATE)
+# 14. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
 section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
@@ -617,7 +583,7 @@ case "$BOOTLOADER" in
 esac
 
 
-# 16. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -667,17 +633,13 @@ echo "    - Modo Híbrido (atual): 'prime-run <comando>' para usar a NVIDIA."
 echo "    - Modo de Economia: ${C_GREEN}sudo envycontrol -s integrated${C_RESET} (e reinicia)."
 echo
 echo -e "7.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
-echo -e "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
+echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
 echo -e "8.  ${C_YELLOW}Modo Performance:${C_RESET}"
-echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
+echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
-echo -e "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
+echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
 echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
-echo -e "10. ${C_YELLOW}Controlo de Ventoinhas (NitroSense):${C_RESET}"
-echo -e "    - Se instalado, o NitroSense estará a correr em segundo plano. Podes interagir com ele via linha de comando se necessário."
-echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
-
