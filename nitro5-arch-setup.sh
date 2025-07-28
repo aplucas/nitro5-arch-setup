@@ -5,14 +5,14 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.7
+#   Versão: 6.8
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.8: Corrigida a substituição do PulseAudio pelo PipeWire para ser feita numa única transação do pacman, evitando erros de dependência.
 #   - v6.7: Corrigido conflito entre 'pipewire-pulse' e 'pulseaudio', automatizando a remoção do pulseaudio.
 #   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e adicionado 'ffmpeg' aos codecs.
 #   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API).
-#   - v6.4: Corrigido conflito invertido onde a instalação do PPD falhava se o TLP já existisse.
 #
 # ===================================================================================
 
@@ -154,13 +154,9 @@ warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alt
 section_header "A unificar o sistema de áudio para PipeWire..."
 ask_confirmation "Desejas instalar o PipeWire para uma gestão de áudio moderna (recomendado)?"
 
-# Remove o PulseAudio para evitar conflitos antes de instalar o PipeWire
-if is_installed_pacman pulseaudio; then
-    warning "A remover 'pulseaudio' para instalar o PipeWire..."
-    sudo pacman -Rns --noconfirm pulseaudio pulseaudio-bluetooth
-fi
-
-# Instala o conjunto completo do PipeWire para substituir PulseAudio e JACK, e o gestor de sessão WirePlumber.
+# Instala o conjunto completo do PipeWire. O pacman irá lidar com a substituição
+# do pulseaudio por pipewire-pulse automaticamente, graças à flag --noconfirm.
+info "A instalar o PipeWire e a substituir os pacotes de áudio existentes..."
 sudo pacman -S --needed --noconfirm pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
 success "Sistema de áudio configurado com PipeWire."
 
