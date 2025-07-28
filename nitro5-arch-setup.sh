@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: O Teu Parceiro de Programação (Gemini)
-#   Versão: 4.5
+#   Versão: 4.6
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v4.6: Adicionada opção para ativar o serviço do RustDesk no arranque.
 #   - v4.5: Adicionada configuração automática da fonte 'MesloLGS NF' no VS Code.
 #   - v4.4: Adicionada etapa para ativar o modo Performance (AMD P-State).
 #   - v4.3: Adicionada configuração do Firefox como padrão e definições globais do Git.
@@ -521,6 +522,23 @@ if ! grep -q "amd_pstate=active" "$GRUB_FILE"; then
     success "AMD P-State ativado. O modo 'Performance' estará disponível após o reinício."
 else
     info "O AMD P-State já está ativado na configuração do GRUB."
+fi
+
+# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# ========================================================
+info "A configurar serviços de início automático..."
+if is_installed_yay rustdesk-bin; then
+    ask_confirmation "Desejas que o RustDesk (acesso remoto) inicie automaticamente com o sistema?"
+    # A resposta da confirmação está na variável $REPLY
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        if ! systemctl is-enabled -q rustdesk.service; then
+            info "A ativar o serviço do RustDesk..."
+            sudo systemctl enable rustdesk.service
+            success "Serviço do RustDesk ativado."
+        else
+            info "O serviço do RustDesk já está ativado."
+        fi
+    fi
 fi
 
 
