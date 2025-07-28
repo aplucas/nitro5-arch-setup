@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.3
+#   Versão: 5.4
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.4: Substituída a instalação da CLI do Gemini de pipx para npm (gemini-cli).
 #   - v5.3: Adicionada instalação da ferramenta de linha de comando do Google Gemini.
 #   - v5.2: Otimizada a verificação do shell padrão para evitar pedidos de senha desnecessários.
 #   - v5.1: Adicionado indicador de progresso das etapas.
@@ -125,7 +126,7 @@ ask_confirmation "Desejas iniciar a configuração do sistema?"
 # ========================================================
 section_header "A atualizar o sistema e a instalar pacotes essenciais..."
 sudo pacman -Syu --noconfirm
-sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq python-pipx
+sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq
 
 # 2. INSTALAR O AUR HELPER (yay)
 # ========================================================
@@ -179,14 +180,6 @@ else
     info "Python já instalado."
 fi
 
-# Gemini CLI
-info "A instalar a ferramenta de linha de comando do Google Gemini..."
-if ! pipx list | grep -q "google-generativeai"; then
-    pipx install google-generativeai
-else
-    info "Google Gemini CLI já está instalado."
-fi
-
 # Node.js (usando NVM para gestão de versões)
 if [ ! -d "$HOME/.nvm" ]; then
     info "A instalar Node.js através do NVM (Node Version Manager)..."
@@ -198,6 +191,17 @@ if [ ! -d "$HOME/.nvm" ]; then
     nvm alias default 'lts/*'
 else
     info "NVM já está instalado."
+fi
+# Carrega o NVM na sessão atual para poder usá-lo imediatamente
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Gemini CLI (via npm)
+info "A instalar a ferramenta de linha de comando do Google Gemini (via npm)..."
+if ! command -v gemini &> /dev/null; then
+    npm install -g gemini-cli
+else
+    info "Gemini CLI já está instalado."
 fi
 
 # Rust (usando rustup)
@@ -642,7 +646,7 @@ echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, 
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo -e "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-echo -e "    - Executa no terminal: ${C_GREEN}genai configure${C_RESET}"
+echo -e "    - Executa no terminal: ${C_GREEN}gemini auth <A_TUA_API_KEY>${C_RESET}"
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 
