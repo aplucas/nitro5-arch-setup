@@ -5,14 +5,13 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 7.8
+#   Versão: 7.9
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v7.9: Adicionada a ativação automática das extensões do GNOME.
 #   - v7.8: Removidas as etapas de configuração da NVIDIA, aceleração de vídeo, 
 #           PipeWire e EasyEffects a pedido do utilizador.
 #   - v7.7: Adicionada a instalação do Flatpak e do WhatSie.
-#   - v7.6: Removida a Etapa 12 (TLP) a pedido do utilizador.
-#   - v7.5: Removida a Etapa 19 (AMD P-State) a pedido do utilizador.
 #
 # ===================================================================================
 
@@ -24,7 +23,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=15
+TOTAL_STEPS=16
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -421,7 +420,41 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 12. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 12. ATIVAR EXTENSÕES DO GNOME
+# ========================================================
+section_header "A ativar as extensões do GNOME instaladas..."
+ask_confirmation "Desejas ativar as extensões do GNOME automaticamente?"
+
+EXTENSIONS_TO_ENABLE=(
+    "appindicatorsupport@rgcjonas.gmail.com"
+    "clipboard-history@alexsaveau.dev"
+    "Vitals@CoreCoding.com"
+    "pop-shell@system76.com"
+    "pip-on-top@rafid.rafsan."
+    "gsconnect@andyholmes.github.io"
+)
+
+for extension in "${EXTENSIONS_TO_ENABLE[@]}"; do
+    # Verifica se a ferramenta gnome-extensions está disponível
+    if command -v gnome-extensions &> /dev/null; then
+        # Tenta ativar a extensão
+        if gnome-extensions info "$extension" &> /dev/null; then
+            info "A ativar a extensão: $extension"
+            gnome-extensions enable "$extension"
+        else
+            warning "Extensão $extension não encontrada. A saltar."
+        fi
+    else
+        warning "Comando 'gnome-extensions' não encontrado. Não é possível ativar as extensões automaticamente."
+        break # Sai do loop se a ferramenta não existir
+    fi
+done
+
+success "Ativação das extensões do GNOME concluída."
+warning "Pode ser necessário reiniciar a sessão (logout/login) para que todas as extensões apareçam e funcionem corretamente."
+
+
+# 13. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -439,7 +472,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 13. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 14. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -512,7 +545,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 14. CONFIGURAÇÃO DE ENERGIA
+# 15. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -530,7 +563,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 15. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 16. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -556,28 +589,25 @@ echo -e "${C_GREEN}=============================================================
 echo
 info "Resumo e Próximos Passos:"
 echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-echo "    - Após o reinício, o novo shell e as novas extensões estarão ativos."
+echo "    - Após o reinício, o novo shell e as extensões do GNOME estarão a funcionar."
 echo
-echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões:${C_RESET}"
-echo "    - As extensões (Clipboard, Vitals, etc.) podem precisar ser ativadas na app 'Extensões'."
-echo
-echo -e "3.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
+echo -e "2.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
 echo "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
 echo "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
 echo "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
 echo
-echo -e "4.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
+echo -e "3.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
 echo "    - Instala a app 'KDE Connect' no teu Android a partir da Play Store."
 echo "    - Certifica-te que ambos os dispositivos estão na mesma rede Wi-Fi e emparelha-os."
 echo
-echo -e "5.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
+echo -e "4.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
 echo "    - Os teus comandos 'ls' e 'cat' agora usarão 'exa' e 'bat' automaticamente."
 echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
 echo
-echo -e "6.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
+echo -e "5.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
 echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
 echo
-echo -e "7.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
+echo -e "6.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
 echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
