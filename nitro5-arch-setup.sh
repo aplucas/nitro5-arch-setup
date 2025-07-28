@@ -5,10 +5,11 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 5.2
+#   Versão: 5.3
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v5.3: Adicionada instalação da ferramenta de linha de comando do Google Gemini.
 #   - v5.2: Otimizada a verificação do shell padrão para evitar pedidos de senha desnecessários.
 #   - v5.1: Adicionado indicador de progresso das etapas.
 #   - v5.0: Corrigido o nome do pacote do Angry IP Scanner (de 'angryipscanner' para 'ipscan').
@@ -124,7 +125,7 @@ ask_confirmation "Desejas iniciar a configuração do sistema?"
 # ========================================================
 section_header "A atualizar o sistema e a instalar pacotes essenciais..."
 sudo pacman -Syu --noconfirm
-sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq
+sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq python-pipx
 
 # 2. INSTALAR O AUR HELPER (yay)
 # ========================================================
@@ -169,13 +170,21 @@ warning "É necessário REINICIAR o sistema para que os drivers da NVIDIA funcio
 # 4. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
 # ========================================================
 section_header "A instalar ambientes de programação e ferramentas de linha de comando..."
-ask_confirmation "Desejas instalar Python, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
+ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
 
 # Python
 if ! is_installed_pacman python; then
     sudo pacman -S --needed --noconfirm python python-pip python-virtualenv
 else
     info "Python já instalado."
+fi
+
+# Gemini CLI
+info "A instalar a ferramenta de linha de comando do Google Gemini..."
+if ! pipx list | grep -q "google-generativeai"; then
+    pipx install google-generativeai
+else
+    info "Google Gemini CLI já está instalado."
 fi
 
 # Node.js (usando NVM para gestão de versões)
@@ -423,7 +432,7 @@ fi
 if ! is_installed_yay gnome-shell-extension-gsconnect; then
     yay -S --needed --noconfirm gnome-shell-extension-gsconnect
 else
-    info "Extensão GSConnect já instalada."
+    info "Extensão GSConnect já está instalada."
 fi
 
 success "Integração com Android (KDE Connect) configurada."
@@ -630,6 +639,10 @@ echo -e "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}S
 echo
 echo -e "8.  ${C_YELLOW}Modo Performance:${C_RESET}"
 echo -e "    - Após o reinício, quando o notebook estiver ligado à corrente, o modo 'Performance' deve aparecer no menu de energia."
+echo
+echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
+echo -e "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
+echo -e "    - Executa no terminal: ${C_GREEN}genai configure${C_RESET}"
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 
