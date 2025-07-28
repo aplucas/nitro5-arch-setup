@@ -5,11 +5,12 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.2
+#   Versão: 6.3
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
-#   - v6.2: Corrigido conflito entre 'tlp' e 'power-profiles-daemon'. O script agora remove o PPD se o TLP for selecionado.
+#   - v6.3: Adicionada instalação do EasyEffects e um preset padrão para otimização de microfone.
+#   - v6.2: Corrigido conflito entre 'tlp' e 'power-profiles-daemon'.
 #   - v6.1: Adicionada instalação de Codecs Multimídia e Gestão de Energia com TLP.
 #   - v6.0: Removida a etapa de instalação do NitroSense.
 #
@@ -23,7 +24,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=17
+TOTAL_STEPS=18
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -420,7 +421,6 @@ else
     info "A saltar a instalação do TLP. O 'power-profiles-daemon' será mantido."
 fi
 
-
 # 11. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
@@ -435,7 +435,106 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 12. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 12. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
+# ========================================================
+section_header "A configurar a otimização de áudio com EasyEffects..."
+ask_confirmation "Desejas instalar o EasyEffects e um preset padrão para o microfone?"
+
+if ! is_installed_pacman easyeffects; then
+    info "A instalar o EasyEffects..."
+    sudo pacman -S --needed --noconfirm easyeffects
+else
+    info "EasyEffects já está instalado."
+fi
+
+# Verifica se a instalação foi bem-sucedida antes de criar o preset
+if is_installed_pacman easyeffects; then
+    info "A criar um preset otimizado para o microfone..."
+    EASYEFFECTS_INPUT_DIR="$HOME/.config/easyeffects/input"
+    PRESET_FILE="$EASYEFFECTS_INPUT_DIR/Microfone Otimizado.json"
+
+    mkdir -p "$EASYEFFECTS_INPUT_DIR"
+
+    # Cria o ficheiro de preset JSON usando um here-doc
+    cat <<'EOF' > "$PRESET_FILE"
+{
+    "input": {
+        "plugins_order": [
+            "gate",
+            "echo_canceller",
+            "compressor",
+            "equalizer"
+        ]
+    },
+    "gate": {
+        "attack": 20.0,
+        "bypass": false,
+        "dry": 0.0,
+        "input_gain": 0.0,
+        "output_gain": 0.0,
+        "range": -90.0,
+        "ratio": 2.0,
+        "release": 250.0,
+        "threshold": -45.0,
+        "wet": 100.0
+    },
+    "echo_canceller": {
+        "bypass": false,
+        "dry": 0.0,
+        "input_gain": 0.0,
+        "output_gain": 0.0,
+        "wet": 100.0
+    },
+    "compressor": {
+        "attack": 5.0,
+        "bypass": false,
+        "dry": 0.0,
+        "input_gain": 0.0,
+        "knee": 6.0,
+        "output_gain": 6.0,
+        "ratio": 4.0,
+        "release": 100.0,
+        "threshold": -20.0,
+        "wet": 100.0
+    },
+    "equalizer": {
+        "bands": [
+            {
+                "frequency": 120.0,
+                "gain": 3.0,
+                "mode": "RLC (BT, RBJ)",
+                "q": 0.7,
+                "slope": "x1",
+                "type": "Lowshelf",
+                "width": 2.4
+            },
+            {
+                "frequency": 5000.0,
+                "gain": 2.0,
+                "mode": "RLC (BT, RBJ)",
+                "q": 0.7,
+                "slope": "x1",
+                "type": "Highshelf",
+                "width": 2.4
+            }
+        ],
+        "bypass": false,
+        "dry": 0.0,
+        "input_gain": 0.0,
+        "mode": "IIR",
+        "num_bands": 2,
+        "output_gain": 0.0,
+        "split": false,
+        "wet": 100.0
+    }
+}
+EOF
+    success "Preset 'Microfone Otimizado' criado com sucesso."
+    warning "Para usar, abre o EasyEffects, vai para a secção 'Entrada' e seleciona o preset 'Microfone Otimizado'."
+fi
+
+
+# 13. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -454,7 +553,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 13. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 14. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -472,7 +571,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 14. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 15. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -545,7 +644,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 15. CONFIGURAÇÃO DE ENERGIA
+# 16. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -563,7 +662,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 16. ATIVAR MODO PERFORMANCE (AMD P-STATE)
+# 17. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
 section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
@@ -610,7 +709,7 @@ case "$BOOTLOADER" in
 esac
 
 
-# 17. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 18. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -638,13 +737,13 @@ info "Resumo e Próximos Passos:"
 echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
 echo "    - Após o reinício, os drivers, o novo shell, as novas extensões e o modo performance estarão ativos."
 echo
-echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões:${C_RESET}"
-echo "    - As novas extensões (Clipboard History, Vitals, GSConnect, Pop Shell, etc.) podem precisar ser ativadas."
-echo "    - Abre a aplicação 'Extensões' ou 'Ajustes' (Tweaks) para as ligares e configurares."
+echo -e "2.  ${C_YELLOW}Ativar as Novas Extensões e Presets:${C_RESET}"
+echo "    - As extensões (Clipboard, Vitals, etc.) podem precisar ser ativadas na app 'Extensões'."
+echo -e "    - Para o áudio, abre o ${C_GREEN}EasyEffects${C_RESET}, vai à secção 'Entrada' e, na área de Presets, seleciona 'Microfone Otimizado'."
 echo
 echo -e "3.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
 echo -e "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
-echo -e "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox, ou na app Clapper)."
+echo -e "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
 echo -e "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
 echo
 echo -e "4.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
@@ -667,6 +766,6 @@ echo "    - Após o reinício, quando o notebook estiver ligado à corrente, o m
 echo
 echo -e "9.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
 echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-echo -e "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
+echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
 echo
 success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
