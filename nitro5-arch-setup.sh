@@ -5,14 +5,14 @@
 #   SCRIPT DE PÓS-INSTALAÇÃO PARA ACER NITRO 5 (AMD+NVIDIA) COM ARCH LINUX + GNOME
 #
 #   Autor: Lucas A Pereira (aplucas)
-#   Versão: 6.5
+#   Versão: 6.6
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo,
 #   otimizado para performance e gestão de bateria.
+#   - v6.6: Adicionada etapa explícita para unificação do áudio com PipeWire e adicionado 'ffmpeg' aos codecs.
 #   - v6.5: Adicionada instalação de drivers de aceleração de vídeo (VA-API) para corrigir a reprodução em navegadores.
 #   - v6.4: Corrigido conflito invertido onde a instalação do PPD falhava se o TLP já existisse.
 #   - v6.3: Adicionada instalação do EasyEffects e um preset padrão para otimização de microfone.
-#   - v6.2: Corrigido conflito entre 'tlp' e 'power-profiles-daemon'.
 #
 # ===================================================================================
 
@@ -24,7 +24,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=19
+TOTAL_STEPS=20
 CURRENT_STEP=1
 
 # --- Funções de ajuda ---
@@ -149,8 +149,17 @@ yay -S --needed --noconfirm libva-utils nvidia-vaapi-driver-git
 success "Drivers de aceleração de vídeo instalados."
 warning "Pode ser necessário reiniciar o navegador ou o sistema para que as alterações tenham efeito."
 
+# 5. UNIFICAÇÃO DO SISTEMA DE ÁUDIO (PIPEWIRE)
+# ========================================================
+section_header "A unificar o sistema de áudio para PipeWire..."
+ask_confirmation "Desejas instalar o PipeWire para uma gestão de áudio moderna (recomendado)?"
 
-# 5. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
+# Instala o conjunto completo do PipeWire para substituir PulseAudio e JACK, e o gestor de sessão WirePlumber.
+sudo pacman -S --needed --noconfirm pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
+success "Sistema de áudio configurado com PipeWire."
+
+
+# 6. INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
 # ========================================================
 section_header "A instalar ambientes de programação e ferramentas de linha de comando..."
 ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
@@ -209,7 +218,7 @@ if ! is_installed_pacman jdk-openjdk; then sudo pacman -S --needed --noconfirm j
 
 success "Verificação de ambientes de programação concluída."
 
-# 6. FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
+# 7. FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
 # ========================================================
 section_header "A instalar ferramentas de desenvolvimento e produtividade..."
 ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"
@@ -228,7 +237,7 @@ if ! is_installed_yay insomnia; then yay -S --needed --noconfirm insomnia; else 
 
 success "Verificação de ferramentas de desenvolvimento concluída."
 
-# 7. CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
+# 8. CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
 # ========================================================
 section_header "A configurar um terminal moderno (ZSH + Powerlevel10k)..."
 ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"
@@ -293,7 +302,7 @@ fi
 
 success "Terminal configurado com ZSH + Powerlevel10k."
 
-# 8. APLICAÇÕES ADICIONAIS
+# 9. APLICAÇÕES ADICIONAIS
 # ========================================================
 section_header "A instalar aplicações adicionais..."
 ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
@@ -318,7 +327,7 @@ if ! is_installed_yay jetbrains-toolbox; then yay -S --needed --noconfirm jetbra
 
 success "Verificação de aplicações adicionais concluída."
 
-# 9. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
+# 10. OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
 # ========================================================
 section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
 ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
@@ -395,16 +404,16 @@ fi
 
 success "Verificação de otimizações do sistema concluída."
 
-# 10. INSTALAÇÃO DE CODECS MULTIMÍDIA
+# 11. INSTALAÇÃO DE CODECS MULTIMÍDIA
 # ========================================================
 section_header "A instalar codecs para compatibilidade multimídia..."
-ask_confirmation "Desejas instalar os pacotes de codecs essenciais (gstreamer, libavcodec)?"
+ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstreamer)?"
 
-# Pacotes GStreamer para a maioria das aplicações e codecs para vídeo
-sudo pacman -S --needed --noconfirm gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+# Pacotes GStreamer para a maioria das aplicações e ffmpeg para compatibilidade geral
+sudo pacman -S --needed --noconfirm ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 success "Codecs multimídia instalados."
 
-# 11. GESTÃO AVANÇADA DE ENERGIA (TLP)
+# 12. GESTÃO AVANÇADA DE ENERGIA (TLP)
 # ========================================================
 section_header "A configurar a gestão avançada de energia para notebooks (TLP)..."
 
@@ -439,13 +448,13 @@ else
     info "A saltar a instalação do TLP. O 'power-profiles-daemon' será mantido."
 fi
 
-# 12. CONFIGURAÇÃO DO BLUETOOTH
+# 13. CONFIGURAÇÃO DO BLUETOOTH
 # ========================================================
 section_header "A configurar o Bluetooth..."
 ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
 
-if ! is_installed_pacman bluez; then
-    sudo pacman -S --needed --noconfirm bluez bluez-utils pipewire-pulse
+if ! is_installed_pacman bluez-utils; then
+    sudo pacman -S --needed --noconfirm bluez bluez-utils
     sudo systemctl enable --now bluetooth.service
 else
     info "Serviços de Bluetooth já instalados e ativos."
@@ -453,7 +462,7 @@ fi
 
 success "Bluetooth configurado e ativado."
 
-# 13. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
+# 14. OTIMIZAÇÃO DE ÁUDIO (EASYEFFECTS)
 # ========================================================
 section_header "A configurar a otimização de áudio com EasyEffects..."
 ask_confirmation "Desejas instalar o EasyEffects e um preset padrão para o microfone?"
@@ -552,7 +561,7 @@ EOF
 fi
 
 
-# 14. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+# 15. INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 # ========================================================
 section_header "A configurar a integração com o Android (KDE Connect)..."
 ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
@@ -571,7 +580,7 @@ fi
 
 success "Integração com Android (KDE Connect) configurada."
 
-# 15. CONFIGURAÇÃO DO LAYOUT DO TECLADO
+# 16. CONFIGURAÇÃO DO LAYOUT DO TECLADO
 # ========================================================
 section_header "A configurar layouts de teclado adicionais..."
 ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
@@ -589,7 +598,7 @@ else
     info "Layout de teclado 'US International' já está configurado."
 fi
 
-# 16. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+# 17. CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 # ========================================================
 section_header "A aplicar configurações pessoais..."
 ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
@@ -662,7 +671,7 @@ fi
 success "Configurações pessoais aplicadas."
 
 
-# 17. CONFIGURAÇÃO DE ENERGIA
+# 18. CONFIGURAÇÃO DE ENERGIA
 # ========================================================
 section_header "A configurar a gestão de energia..."
 ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
@@ -680,7 +689,7 @@ gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-tim
 warning "As configurações de energia foram aplicadas. O modo 'Economia de Energia' pode usar um tempo de ecrã mais curto."
 success "Gestão de energia configurada."
 
-# 18. ATIVAR MODO PERFORMANCE (AMD P-STATE)
+# 19. ATIVAR MODO PERFORMANCE (AMD P-STATE)
 # ========================================================
 section_header "A otimizar a performance do CPU AMD..."
 ask_confirmation "Desejas ativar o AMD P-State para teres acesso ao modo 'Performance'?"
@@ -727,7 +736,7 @@ case "$BOOTLOADER" in
 esac
 
 
-# 19. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+# 20. CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 # ========================================================
 section_header "A configurar serviços de início automático..."
 if is_installed_yay rustdesk-bin; then
@@ -760,7 +769,7 @@ echo "    - As extensões (Clipboard, Vitals, etc.) podem precisar ser ativadas 
 echo -e "    - Para o áudio, abre o ${C_GREEN}EasyEffects${C_RESET}, vai à secção 'Entrada' e, na área de Presets, seleciona 'Microfone Otimizado'."
 echo
 echo -e "3.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
-echo -e "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
+echo "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
 echo -e "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
 echo -e "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
 echo
