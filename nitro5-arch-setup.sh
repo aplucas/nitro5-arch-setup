@@ -5,10 +5,10 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.5 (Refatorada)
+#   Versão: 8.6 (Refatorada com configs de relógio)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v8.6: Perfil para Headset (Otimizado para microfones mais simples).
+#   - v8.6: Adicionada configuração de relógio (24h, segundos, nº semana)
 #   - v8.5: Refatoração para eliminar código repetido e melhorar a manutenibilidade
 #           usando funções de instalação genéricas e listas de pacotes em arrays.
 #
@@ -29,7 +29,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=18
+TOTAL_STEPS=19
 CURRENT_STEP=1
 
 # ===================================================================================
@@ -663,6 +663,19 @@ step18_install_email_client() {
     fi
 }
 
+# ETAPA 19: CONFIGURAÇÕES DO RELÓGIO E CALENDÁRIO DO GNOME
+step19_configure_gnome_clock() {
+    if ! ask_confirmation "Desejas configurar o relógio para exibir segundos, formato 24h e número da semana?"; then return; fi
+    info "A aplicar configurações de relógio e calendário..."
+    # Formato de 24 horas
+    gsettings set org.gnome.desktop.interface clock-format '24h'
+    # Mostrar segundos no relógio
+    gsettings set org.gnome.desktop.interface clock-show-seconds true
+    # Mostrar número da semana no calendário (quando o relógio é clicado)
+    gsettings set org.gnome.desktop.calendar show-weekdate true
+    success "Configurações de relógio e calendário aplicadas."
+}
+
 
 # ===================================================================================
 #                             EXECUÇÃO PRINCIPAL
@@ -749,6 +762,8 @@ main() {
     step14_apply_personal_configs
     success "Configurações pessoais aplicadas."
 
+
+
     section_header "A configurar a gestão de energia..."
     step15_setup_power_settings
     success "Gestão de energia configurada."
@@ -765,8 +780,11 @@ main() {
     step18_install_email_client
     success "Instalação do cliente de e-mail concluída."
 
+    section_header "A configurar o relógio e o calendário do GNOME..."
+    step19_configure_gnome_clock
+    success "Configuração do relógio e calendário concluída."
+
     # --- Mensagem Final ---
-    # A sua mensagem final já era excelente, mantive-a na íntegra.
     echo
     echo -e "${C_GREEN}===================================================================${C_RESET}"
     echo -e "${C_GREEN}      SETUP CONCLUÍDO COM SUCESSO!                                 ${C_RESET}"
