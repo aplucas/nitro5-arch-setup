@@ -5,12 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.3 (Refatorada)
+#   Versão: 8.4 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v8.4: Adicionada a instalação do cliente de e-mail Geary.
 #   - v8.3: Adicionada a instalação do EasyEffects para supressão de ruído do microfone.
 #   - v8.2: Adicionada a dependência 'zip' para corrigir a compilação de extensões.
-#   - v8.1: Corrigido o ID do Flatpak do WhatsApp.
 #
 # ===================================================================================
 
@@ -28,7 +28,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=17
+TOTAL_STEPS=18
 CURRENT_STEP=1
 
 # --- Funções de Ajuda ---
@@ -435,6 +435,18 @@ step17_setup_audio_enhancement() {
     warning "O EasyEffects foi instalado. A configuração final deve ser feita manualmente através da aplicação."
 }
 
+# ETAPA 18: INSTALAR CLIENTE DE E-MAIL (GEARY)
+step18_install_email_client() {
+    ask_confirmation "Desejas instalar o Geary, o cliente de e-mail padrão do GNOME?"
+
+    if ! is_installed_pacman geary; then
+        info "A instalar o Geary..."
+        sudo pacman -S --needed --noconfirm geary
+    else
+        info "Geary já está instalado."
+    fi
+}
+
 
 # ===================================================================================
 #                             EXECUÇÃO PRINCIPAL
@@ -529,6 +541,10 @@ main() {
     step17_setup_audio_enhancement
     success "Instalação de ferramentas de áudio concluída."
 
+    section_header "A instalar o cliente de e-mail do GNOME..."
+    step18_install_email_client
+    success "Instalação do cliente de e-mail concluída."
+
 
     # --- Mensagem Final ---
     echo
@@ -570,6 +586,11 @@ main() {
     echo "      5. Para resultados excelentes, seleciona o motor ${C_GREEN}'RNNoise'${C_RESET} dentro do efeito."
     echo "      6. Ativa os efeitos no interruptor geral no canto superior esquerdo da janela."
     echo "    - Para que os efeitos iniciem com o sistema, vai às preferências do EasyEffects e ativa a opção 'Iniciar Serviço no Login'."
+    echo
+    echo -e "8.  ${C_YELLOW}Configurar o teu E-mail:${C_RESET}"
+    echo "    - Instalamos o ${C_GREEN}Geary${C_RESET}, o cliente de e-mail oficial do GNOME."
+    echo "    - Para uma integração perfeita, vai a 'Definições' > 'Contas Online' e adiciona a tua conta Google, Microsoft, etc."
+    echo "    - Ao abrires o Geary, ele deverá detetar e configurar a tua conta automaticamente."
     echo
     success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 }
