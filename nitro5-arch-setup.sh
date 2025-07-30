@@ -5,13 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.0 (Refatorada)
+#   Versão: 8.1 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v8.1: Corrigido o ID do Flatpak do WhatsApp.
 #   - v8.0: Refatorado para maior modularidade e manutenibilidade.
 #           Adicionado 'set -euo pipefail' para maior robustez.
 #           Adicionado 'sudo -v' para pedir a senha apenas uma vez.
-#   - v7.9: Adicionada a ativação automática das extensões do GNOME.
 #
 # ===================================================================================
 
@@ -67,7 +67,7 @@ is_installed_yay() {
 
 # Verifica se uma aplicação está instalada via flatpak
 is_installed_flatpak() {
-    flatpak list | grep -q "$1"
+    flatpak list --app | grep -q "$1"
 }
 
 ask_confirmation() {
@@ -246,9 +246,11 @@ step6_install_extra_apps() {
     if ! is_installed_yay jetbrains-toolbox; then yay -S --needed --noconfirm jetbrains-toolbox; else info "JetBrains Toolbox já instalado."; fi
 }
 
-# ETAPA 7: INSTALAR APLICAÇÕES VIA FLATPAK (WHATSIE)
+# ETAPA 7: INSTALAR APLICAÇÕES VIA FLATPAK (WHATSAPP)
 step7_install_flatpak_apps() {
-    ask_confirmation "Desejas instalar o WhatSie (cliente WhatsApp) via Flatpak?"
+    ask_confirmation "Desejas instalar o WhatsApp for Linux (cliente não-oficial) via Flatpak?"
+    local WHATSAPP_ID="com.github.eneshecan.WhatsAppForLinux"
+
     if ! is_installed_pacman flatpak; then
         info "A instalar o Flatpak..."
         sudo pacman -S --needed --noconfirm flatpak
@@ -256,11 +258,11 @@ step7_install_flatpak_apps() {
         info "O Flatpak já está instalado."
     fi
 
-    if ! is_installed_flatpak "io.github.mimbrero.WhatsSie"; then
-        info "A instalar o WhatSie via Flatpak..."
-        sudo flatpak install --noninteractive --system flathub io.github.mimbrero.WhatsSie
+    if ! is_installed_flatpak "$WHATSAPP_ID"; then
+        info "A instalar o WhatsApp for Linux via Flatpak..."
+        sudo flatpak install --noninteractive --system flathub "$WHATSAPP_ID"
     else
-        info "O WhatSie já está instalado."
+        info "O WhatsApp for Linux já está instalado."
     fi
 }
 
@@ -468,8 +470,6 @@ main() {
     step8_optimize_gnome
     success "Verificação de otimizações do sistema concluída."
 
-
-
     section_header "A instalar codecs para compatibilidade multimídia..."
     step9_install_codecs
     success "Codecs multimídia instalados."
@@ -539,4 +539,3 @@ main() {
 # --- Ponto de Entrada do Script ---
 # Chama a função principal para iniciar a execução.
 main
-
