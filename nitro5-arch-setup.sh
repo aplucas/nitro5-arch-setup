@@ -5,13 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.1 (Refatorada)
+#   Versão: 8.2 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v8.2: Adicionada a dependência 'zip' para corrigir a compilação de extensões.
 #   - v8.1: Corrigido o ID do Flatpak do WhatsApp.
 #   - v8.0: Refatorado para maior modularidade e manutenibilidade.
-#           Adicionado 'set -euo pipefail' para maior robustez.
-#           Adicionado 'sudo -v' para pedir a senha apenas uma vez.
 #
 # ===================================================================================
 
@@ -90,7 +89,7 @@ ask_confirmation() {
 # ETAPA 1: ATUALIZAR O SISTEMA E INSTALAR DEPENDÊNCIAS BÁSICAS
 step1_update_system() {
     sudo pacman -Syu --noconfirm
-    sudo pacman -S --needed --noconfirm git base-devel curl wget unzip jq
+    sudo pacman -S --needed --noconfirm git base-devel curl wget unzip zip jq
 }
 
 # ETAPA 2: INSTALAR O AUR HELPER (yay)
