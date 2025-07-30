@@ -8,6 +8,7 @@
 #   Versão: 8.5 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v8.6: Perfil para Headset (Otimizado para microfones mais simples).
 #   - v8.5: Refatoração para eliminar código repetido e melhorar a manutenibilidade
 #           usando funções de instalação genéricas e listas de pacotes em arrays.
 #
@@ -510,90 +511,143 @@ step16_setup_autostart() {
     fi
 }
 
-# Função idempotente para criar um perfil de microfone padrão
-create_microphone_preset() {
+# Função para criar um perfil otimizado para headsets simples.
+create_headset_preset() {
     local config_dir="$HOME/.config/easyeffects/input"
-    local config_file="$config_dir/Voz_Limpa_e_Sem_Ruido.json"
+    local config_file="$config_dir/Voz_Adaptada_Headset.json"
 
-    if [ -f "$config_file" ]; then
-        info "O perfil de microfone '$config_file' já existe."
-        info "Nenhuma alteração foi feita para preservar suas configurações."
-        return 0
-    fi
+    # Apaga qualquer versão antiga deste perfil
+    rm -f "$config_file"
 
-    info "Criando o perfil de microfone 'Voz_Limpa_e_Sem_Ruido.json'..."
+    info "Criando o perfil otimizado 'Voz_Adaptada_Headset.json'..."
     mkdir -p "$config_dir"
 
-    cat << EOF > "$config_file"
-{
-    "bypass": false,
-    "plugins_order": [
-        "rnnoise_0",
-        "gate_0",
-        "compressor_0"
-    ],
-    "rnnoise_0": {
-        "bypass": false,
-        "input_gain": 10.0,
-        "output_gain": 10.0,
-        "model": "shannon_human-large-2023-01-23",
-        "vad_threshold": 90.0
-    },
-    "gate_0": {
-        "attack": 25.0,
-        "bypass": false,
-        "hold": 150.0,
-        "hysteresis": 4.0,
-        "input_gain": 0.0,
-        "lookahead": 1.5,
-        "output_gain": 0.0,
-        "range": 60.0,
-        "ratio": 2.0,
-        "release": 250.0,
-        "sidechain_source": "Middle",
-        "threshold": -42.0
-    },
-    "compressor_0": {
-        "attack": 5.0,
-        "bypass": false,
-        "input_gain": 0.0,
-        "knee": 6.0,
-        "makeup": 6.0,
-        "output_gain": 0.0,
-        "ratio": 4.0,
-        "release": 100.0,
-        "sidechain_source": "Middle",
-        "threshold": -20.0
+    # Usando printf com a nova estrutura JSON para headsets.
+    printf '%s' '{
+    "input": {
+        "blocklist": [],
+        "plugins_order": [
+            "rnnoise#0",
+            "filter#0",
+            "gate#0",
+            "compressor#0"
+        ],
+        "compressor#0": {
+            "attack": 5.0,
+            "boost-amount": 6.0,
+            "boost-threshold": -72.0,
+            "bypass": false,
+            "dry": -100.0,
+            "hpf-frequency": 100.0,
+            "hpf-mode": "12 dB/oct",
+            "input-gain": 0.0,
+            "knee": 6.0,
+            "lpf-frequency": 20000.0,
+            "lpf-mode": "off",
+            "makeup": 9.0,
+            "mode": "Downward",
+            "output-gain": 0.0,
+            "ratio": 3.0,
+            "release": 150.0,
+            "release-threshold": -99.9,
+            "sidechain": {
+                "lookahead": 1.5,
+                "mode": "RMS",
+                "preamp": 0.0,
+                "reactivity": 10.0,
+                "source": "Middle",
+                "stereo-split-source": "Left/Right",
+                "type": "Feed-forward"
+            },
+            "stereo-split": false,
+            "threshold": -24.0,
+            "wet": 100.0
+        },
+        "filter#0": {
+            "band#0": {
+                "bypass": false,
+                "frequency": 150.0,
+                "gain": 4.0,
+                "mode": "Low Shelf",
+                "q": 0.7
+            },
+            "band#1": {
+                "bypass": false,
+                "frequency": 1000.0,
+                "gain": -2.0,
+                "mode": "Bell",
+                "q": 0.9
+            },
+            "band#2": {
+                "bypass": false,
+                "frequency": 5000.0,
+                "gain": 4.0,
+                "mode": "High Shelf",
+                "q": 0.7
+            },
+            "bypass": false,
+            "input-gain": 0.0,
+            "output-gain": 0.0
+        },
+        "gate#0": {
+            "attack": 15.0,
+            "bypass": false,
+            "curve-threshold": -48.0,
+            "curve-zone": -6.0,
+            "dry": -100.0,
+            "hpf-frequency": 100.0,
+            "hpf-mode": "12dB/oct",
+            "hysteresis": false,
+            "hysteresis-threshold": -12.0,
+            "hysteresis-zone": -6.0,
+            "input-gain": 0.0,
+            "lpf-frequency": 20000.0,
+            "lpf-mode": "off",
+            "makeup": 0.0,
+            "output-gain": 0.0,
+            "reduction": -50.0,
+            "release": 125.0,
+            "sidechain": {
+                "input": "Internal",
+                "lookahead": 0.0,
+                "mode": "RMS",
+                "preamp": 0.0,
+                "reactivity": 10.0,
+                "source": "Middle",
+                "stereo-split-source": "Left/Right"
+            },
+            "stereo-split": false,
+            "wet": 100.0
+        },
+        "rnnoise#0": {
+            "bypass": false,
+            "enable-vad": true,
+            "input-gain": 14.0,
+            "model-name": "",
+            "output-gain": 0.0,
+            "release": 20.01,
+            "vad-thres": 75.0,
+            "wet": 100.0
+        }
     }
-}
-EOF
-    success "Perfil 'Voz Limpa e Sem Ruído.json' criado com sucesso!"
+}' > "$config_file"
+
+    success "Missão Cumprida! O perfil 'Voz_Adaptada_Headset.json' foi criado."
+    info "Para ativá-lo, abra o EasyEffects, vá na aba 'Entrada' e carregue o novo perfil."
 }
 
-
-# ETAPA 17: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
+# ETAPA 17 FINAL: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
 step17_setup_audio_enhancement() {
-    if ! ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio (supressão de ruído)?"; then return; fi
+    if ! ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio?"; then return; fi
     
-    # Instala o EasyEffects dos repositórios oficiais
     install_pacman easyeffects
-    
-    # Instala os presets da comunidade encontrados no AUR
     install_yay easyeffects-bundy01-presets
     
     warning "O EasyEffects e seus presets foram instalados."
 
-    # Pergunta se o usuário deseja aplicar a configuração de microfone
-    if ask_confirmation "Desejas criar um perfil padrão de microfone para ter uma 'Voz Limpa e Sem Ruído'?"; then
-        create_microphone_preset
-        success "Perfil 'Voz Limpa e Sem Ruído.json' criado com sucesso!"
-        info "Para ativá-lo, siga os passos abaixo:"
-        echo "1. Abra o aplicativo 'EasyEffects'."
-        echo "2. Na aba 'Entrada', selecione o seu microfone."
-        echo "3. No painel 'Presets' à direita, clique em 'Carregar'."
-        echo "4. Selecione o perfil 'Voz Limpa e Sem Ruído' e aproveite!"
-    else
-        warning "Ok. A configuração do EasyEffects deverá ser feita manualmente através da aplicação."
+    if ask_confirmation "Desejas criar o perfil de microfone 'Voz Limpa e Sem Ruído'?"; then
+        create_headset_preset
+        info "Para ativá-lo, abra o EasyEffects, vá na aba 'Entrada' e carregue o perfil."
     fi
 }
 
