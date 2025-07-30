@@ -5,12 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.2 (Refatorada)
+#   Versão: 8.3 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v8.3: Adicionada a instalação do EasyEffects para supressão de ruído do microfone.
 #   - v8.2: Adicionada a dependência 'zip' para corrigir a compilação de extensões.
 #   - v8.1: Corrigido o ID do Flatpak do WhatsApp.
-#   - v8.0: Refatorado para maior modularidade e manutenibilidade.
 #
 # ===================================================================================
 
@@ -28,7 +28,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=16
+TOTAL_STEPS=17
 CURRENT_STEP=1
 
 # --- Funções de Ajuda ---
@@ -412,6 +412,30 @@ step16_setup_autostart() {
     fi
 }
 
+# ETAPA 17: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
+step17_setup_audio_enhancement() {
+    ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio (supressão de ruído do microfone)?"
+
+    # EasyEffects está nos repositórios oficiais e funciona com PipeWire (padrão no GNOME)
+    if ! is_installed_pacman easyeffects; then
+        info "A instalar o EasyEffects..."
+        sudo pacman -S --needed --noconfirm easyeffects
+    else
+        info "EasyEffects já está instalado."
+    fi
+
+    # Instala predefinições da comunidade para facilitar a configuração
+    if ! is_installed_yay easyeffects-community-presets; then
+        info "A instalar predefinições da comunidade para o EasyEffects..."
+        yay -S --needed --noconfirm easyeffects-community-presets
+    else
+        info "Predefinições da comunidade para o EasyEffects já instaladas."
+    fi
+
+    warning "O EasyEffects foi instalado. A configuração final deve ser feita manualmente através da aplicação."
+}
+
+
 # ===================================================================================
 #                             EXECUÇÃO PRINCIPAL
 # ===================================================================================
@@ -500,6 +524,10 @@ main() {
     section_header "A configurar serviços de início automático..."
     step16_setup_autostart
     success "Configuração de serviços de início automático concluída."
+    
+    section_header "A instalar melhoramentos de áudio (supressão de ruído)..."
+    step17_setup_audio_enhancement
+    success "Instalação de ferramentas de áudio concluída."
 
 
     # --- Mensagem Final ---
@@ -531,6 +559,17 @@ main() {
     echo -e "6.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
     echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
     echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
+    echo
+    echo -e "7.  ${C_YELLOW}Melhorar o teu Microfone (Supressão de Ruído):${C_RESET}"
+    echo "    - Instalamos o ${C_GREEN}EasyEffects${C_RESET}, uma poderosa ferramenta de áudio."
+    echo "    - Para ativar a supressão de ruído, segue estes passos após o reinício:"
+    echo "      1. Abre a aplicação 'EasyEffects'."
+    echo "      2. No painel esquerdo, clica no separador 'Entrada' (ícone de microfone)."
+    echo "      3. No painel direito, clica em 'Efeitos' > '+ Adicionar Efeito'."
+    echo "      4. Procura e adiciona o efeito ${C_GREEN}'Redução de Ruído'${C_RESET}."
+    echo "      5. Para resultados excelentes, seleciona o motor ${C_GREEN}'RNNoise'${C_RESET} dentro do efeito."
+    echo "      6. Ativa os efeitos no interruptor geral no canto superior esquerdo da janela."
+    echo "    - Para que os efeitos iniciem com o sistema, vai às preferências do EasyEffects e ativa a opção 'Iniciar Serviço no Login'."
     echo
     success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 }
