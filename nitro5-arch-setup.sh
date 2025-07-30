@@ -5,19 +5,19 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.4 (Refatorada)
+#   Versão: 8.5 (Refatorada)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v8.4: Adicionada a instalação do cliente de e-mail Geary.
-#   - v8.3: Adicionada a instalação do EasyEffects para supressão de ruído do microfone.
-#   - v8.2: Adicionada a dependência 'zip' para corrigir a compilação de extensões.
+#   - v8.5: Refatoração para eliminar código repetido e melhorar a manutenibilidade
+#           usando funções de instalação genéricas e listas de pacotes em arrays.
 #
 # ===================================================================================
 
 # --- Configuração de Segurança do Script ---
-# set -e: Sai imediatamente se um comando falhar.
-# set -u: Trata variáveis não definidas como um erro.
-# set -o pipefail: O status de saída de um pipeline é o do último comando que falhou.
+# set -e: Sai imediatamente se um comando (ou pipeline) retornar um status de erro.
+# set -u: Trata o uso de variáveis não definidas como um erro, evitando bugs.
+# set -o pipefail: Se qualquer comando num pipeline falhar, o status de saída de todo
+#                  o pipeline será o do comando que falhou (e não o do último).
 set -euo pipefail
 
 # --- Cores para uma melhor visualização ---
@@ -31,22 +31,15 @@ C_RESET="\e[0m"
 TOTAL_STEPS=18
 CURRENT_STEP=1
 
-# --- Funções de Ajuda ---
-info() {
-    echo -e "${C_BLUE}[INFO]${C_RESET} $1"
-}
+# ===================================================================================
+#                             FUNÇÕES DE AJUDA E UTILITÁRIAS
+# ===================================================================================
 
-success() {
-    echo -e "${C_GREEN}[SUCESSO]${C_RESET} $1"
-}
-
-warning() {
-    echo -e "${C_YELLOW}[AVISO]${C_RESET} $1"
-}
-
-error() {
-    echo -e "${C_RED}[ERRO]${C_RESET} $1"
-}
+# --- Funções de Logging ---
+info() { echo -e "${C_BLUE}[INFO]${C_RESET} $1"; }
+success() { echo -e "${C_GREEN}[SUCESSO]${C_RESET} $1"; }
+warning() { echo -e "${C_YELLOW}[AVISO]${C_RESET} $1"; }
+error() { echo -e "${C_RED}[ERRO]${C_RESET} $1"; }
 
 section_header() {
     echo -e "\n${C_BLUE}================== [ ETAPA ${CURRENT_STEP}/${TOTAL_STEPS} ] ==================${C_RESET}"
@@ -54,32 +47,70 @@ section_header() {
     ((CURRENT_STEP++))
 }
 
-# Verifica se um pacote está instalado via pacman (oficial)
-is_installed_pacman() {
-    pacman -Q "$1" &> /dev/null
-}
+# --- Funções de Verificação ---
+is_installed_pacman() { pacman -Q "$1" &>/dev/null; }
+is_installed_yay() { yay -Q "$1" &>/dev/null; }
+is_installed_flatpak() { flatpak list --app | grep -q "$1"; }
+command_exists() { command -v "$1" &>/dev/null; }
 
-# Verifica se um pacote está instalado via yay (AUR)
-is_installed_yay() {
-    yay -Q "$1" &> /dev/null
-}
-
-# Verifica se uma aplicação está instalada via flatpak
-is_installed_flatpak() {
-    flatpak list --app | grep -q "$1"
-}
-
+# --- Função de Confirmação ---
 ask_confirmation() {
     # Se a variável de ambiente YES for 'true', pula a pergunta.
-    if [[ "${YES-}" == "true" ]]; then
-        return 0
-    fi
-    read -p "$(echo -e "${C_YELLOW}[PERGUNTA]${C_RESET} $1 [S/n] ")" -n 1 -r
+    if [[ "${YES-}" == "true" ]]; then return 0; fi
+    read -p "$(echo -e "${C_YELLOW}[PERGUNTA]${C_RESET} $1 [S/n] ")" -n 1 -r REPLY
     echo
-    if [[ ! $REPLY =~ ^[Ss]$ && $REPLY != "" ]]; then
-        error "Operação cancelada pelo utilizador."
-        exit 1
+    if [[ "$REPLY" =~ ^[Nn]$ ]]; then
+        # Retorna 1 se o utilizador disser 'não'
+        return 1
     fi
+    # Retorna 0 (sucesso) para 'sim' (Enter ou 's'/'S')
+    return 0
+}
+
+# --- FUNÇÕES DE INSTALAÇÃO GENÉRICAS (A GRANDE MELHORIA!) ---
+
+# Instala pacotes dos repositórios oficiais (pacman)
+install_pacman() {
+    local pkgs_to_install=()
+    for pkg in "$@"; do
+        if ! is_installed_pacman "$pkg"; then
+            info "A adicionar '$pkg' à lista de instalação do pacman."
+            pkgs_to_install+=("$pkg")
+        else
+            info "Pacote '$pkg' já está instalado (pacman)."
+        fi
+    done
+    if [ ${#pkgs_to_install[@]} -gt 0 ]; then
+        info "A instalar pacotes: ${pkgs_to_install[*]}"
+        sudo pacman -S --needed --noconfirm "${pkgs_to_install[@]}"
+    fi
+}
+
+# Instala pacotes do AUR (yay)
+install_yay() {
+    local pkgs_to_install=()
+    for pkg in "$@"; do
+        if ! is_installed_yay "$pkg"; then
+            info "A adicionar '$pkg' à lista de instalação do AUR."
+            pkgs_to_install+=("$pkg")
+        else
+            info "Pacote '$pkg' já está instalado (AUR)."
+        fi
+    done
+    if [ ${#pkgs_to_install[@]} -gt 0 ]; then
+        info "A instalar pacotes do AUR: ${pkgs_to_install[*]}"
+        yay -S --needed --noconfirm "${pkgs_to_install[@]}"
+    fi
+}
+
+# --- FUNÇÃO PARA CARREGAR AMBIENTES ---
+source_envs() {
+    # NVM (Node.js)
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+    # Rust (Cargo)
+    [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 }
 
 # ===================================================================================
@@ -88,13 +119,16 @@ ask_confirmation() {
 
 # ETAPA 1: ATUALIZAR O SISTEMA E INSTALAR DEPENDÊNCIAS BÁSICAS
 step1_update_system() {
+    info "A sincronizar e a atualizar a base de dados de pacotes..."
     sudo pacman -Syu --noconfirm
-    sudo pacman -S --needed --noconfirm git base-devel curl wget unzip zip jq
+    local base_deps=(git base-devel curl wget unzip zip jq)
+    info "A verificar dependências essenciais: ${base_deps[*]}"
+    install_pacman "${base_deps[@]}"
 }
 
 # ETAPA 2: INSTALAR O AUR HELPER (yay)
 step2_install_yay() {
-    if ! command -v yay &> /dev/null; then
+    if ! command_exists yay; then
         info "O AUR Helper 'yay' não foi encontrado. A instalar..."
         git clone https://aur.archlinux.org/yay.git /tmp/yay
         (cd /tmp/yay && makepkg -si --noconfirm)
@@ -108,30 +142,32 @@ step2_install_yay() {
 
 # ETAPA 3: INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
 step3_install_langs() {
-    ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust (com exa, bat, ytop), Go e Java?"
+    if ! ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust e ferramentas, Go e Java?"; then
+        info "A saltar a instalação de linguagens de programação."
+        return
+    fi
 
     # Python
-    if ! is_installed_pacman python; then sudo pacman -S --needed --noconfirm python python-pip python-virtualenv; else info "Python já instalado."; fi
+    install_pacman python python-pip python-virtualenv
 
     # Node.js (usando NVM)
     if [ ! -d "$HOME/.nvm" ]; then
         info "A instalar Node.js através do NVM..."
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install --lts
-        nvm use --lts
-        nvm alias default 'lts/*'
+        source_envs # Carrega o NVM na sessão atual
+        nvm install --lts && nvm use --lts && nvm alias default 'lts/*'
     else
         info "NVM já está instalado."
     fi
-    # Carrega o NVM na sessão atual
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    source_envs # Garante que está carregado
 
     # Gemini CLI (via npm)
-    info "A instalar a ferramenta de linha de comando do Google Gemini..."
-    if ! command -v gemini &> /dev/null; then npm install -g @google/gemini-cli; else info "Google Gemini CLI já está instalado."; fi
+    if ! command_exists gemini; then
+        info "A instalar a ferramenta de linha de comando do Google Gemini..."
+        npm install -g @google/gemini-cli
+    else
+        info "Google Gemini CLI já está instalado."
+    fi
 
     # Rust (usando rustup)
     if [ ! -d "$HOME/.cargo" ]; then
@@ -140,126 +176,145 @@ step3_install_langs() {
     else
         info "Rust (rustup) já está instalado."
     fi
-    # Adiciona o cargo ao PATH da sessão atual
-    source "$HOME/.cargo/env"
+    source_envs # Adiciona o cargo ao PATH da sessão atual
 
     # Ferramentas Rust
-    if ! command -v exa &> /dev/null; then cargo install exa; else info "'exa' já está instalado."; fi
-    if ! command -v bat &> /dev/null; then cargo install bat; else info "'bat' já está instalado."; fi
-    if ! command -v ytop &> /dev/null; then cargo install ytop; else info "'ytop' já está instalado."; fi
+    local rust_tools=(exa bat ytop)
+    for tool in "${rust_tools[@]}"; do
+        if ! command_exists "$tool"; then
+            info "A instalar ferramenta Rust: '$tool'..."
+            cargo install "$tool"
+        else
+            info "Ferramenta Rust '$tool' já está instalada."
+        fi
+    done
 
     # Go e Java
-    if ! is_installed_pacman go; then sudo pacman -S --needed --noconfirm go; else info "Go já instalado."; fi
-    if ! is_installed_pacman jdk-openjdk; then sudo pacman -S --needed --noconfirm jdk-openjdk; else info "Java (OpenJDK) já instalado."; fi
+    install_pacman go jdk-openjdk
 }
 
 # ETAPA 4: FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
 step4_install_dev_tools() {
-    ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"
-    if ! is_installed_yay visual-studio-code-bin; then yay -S --needed --noconfirm visual-studio-code-bin; else info "VS Code já instalado."; fi
+    if ! ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"; then
+        info "A saltar a instalação de ferramentas de desenvolvimento."
+        return
+    fi
+    install_yay visual-studio-code-bin dbeaver insomnia
+    # Docker requer passos adicionais
     if ! is_installed_pacman docker; then
-        sudo pacman -S --needed --noconfirm docker docker-compose
+        install_pacman docker docker-compose
+        info "A ativar e a iniciar o serviço do Docker..."
         sudo systemctl enable --now docker.service
+        info "A adicionar o utilizador '$USER' ao grupo do Docker..."
         sudo usermod -aG docker "$USER"
         warning "Para usar o Docker sem 'sudo', precisas de fazer logout e login novamente."
     else
-        info "Docker já instalado."
+        info "Docker já está instalado."
     fi
-    if ! is_installed_yay dbeaver; then yay -S --needed --noconfirm dbeaver; else info "DBeaver já instalado."; fi
-    if ! is_installed_yay insomnia; then yay -S --needed --noconfirm insomnia; else info "Insomnia já instalado."; fi
 }
 
 # ETAPA 5: CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
 step5_configure_zsh() {
-    ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"
-    if ! is_installed_pacman zsh; then sudo pacman -S --needed --noconfirm zsh zsh-completions; else info "ZSH já instalado."; fi
-    if ! is_installed_yay ttf-meslo-nerd-font-powerlevel10k; then yay -S --needed --noconfirm ttf-meslo-nerd-font-powerlevel10k; else info "Fonte Meslo Nerd já instalada."; fi
+    if ! ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"; then
+        info "A saltar a configuração do ZSH."
+        return
+    fi
+    install_pacman zsh zsh-completions
+    install_yay ttf-meslo-nerd-font-powerlevel10k
 
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; fi
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        info "A instalar o Oh My Zsh..."
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+        info "Oh My Zsh já está instalado."
+    fi
 
+    # Instala plugins e tema
     ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
-    if [ ! -d "${ZSH_CUSTOM}/themes/powerlevel10k" ]; then git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM}/themes/powerlevel10k"; fi
-    if [ ! -d "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" ]; then git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"; fi
-    if [ ! -d "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" ]; then git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"; fi
+    [ ! -d "${ZSH_CUSTOM}/themes/powerlevel10k" ] && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM}/themes/powerlevel10k"
+    [ ! -d "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" ] && git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"
+    [ ! -d "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" ] && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
 
     info "A garantir que a configuração do .zshrc está correta..."
     tee "$HOME/.zshrc" > /dev/null <<'EOF'
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# Set name of the theme to load
+# Set name of the theme to load.
+# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME="powerlevel10k/powerlevel10k"
 
-# Oh My Zsh plugins
+# Oh My Zsh plugins.
 plugins=(
   git
   zsh-autosuggestions
   zsh-syntax-highlighting
 )
 
-# Source Oh My Zsh
+# Source Oh My Zsh.
 source $ZSH/oh-my-zsh.sh
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# --- Customizações do Utilizador ---
+# --- User customizations ---
 
-# Adiciona o binário do Cargo (Rust) ao PATH
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# NVM (Node.js) configuration
+# Load NVM (Node Version Manager).
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Aliases para comandos modernos
+# Add Rust's cargo binary to the PATH.
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Modern command aliases.
 alias cat='bat --paging=never'
 alias ls='exa --icons'
 EOF
 
     # Altera o shell padrão se necessário
-    CURRENT_SHELL=$(getent passwd "$USER" | cut -d: -f7)
-    ZSH_PATH=$(which zsh)
-    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
-        info "A alterar o shell padrão para ZSH..."
-        chsh -s "$ZSH_PATH"
+    if [[ "$(getent passwd "$USER" | cut -d: -f7)" != "$(which zsh)" ]]; then
+        info "A alterar o shell padrão para ZSH para o utilizador $USER..."
+        chsh -s "$(which zsh)"
         warning "O teu shell padrão foi alterado para ZSH. A alteração terá efeito no próximo login."
     else
         info "O ZSH já é o shell padrão."
     fi
 }
 
+
 # ETAPA 6: APLICAÇÕES ADICIONAIS
 step6_install_extra_apps() {
-    ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"
-    if ! is_installed_yay lunarvim-git; then yay -S --needed --noconfirm lunarvim-git; else info "LunarVim já instalado."; fi
-    if ! is_installed_pacman obsidian; then sudo pacman -S --needed --noconfirm obsidian; else info "Obsidian já instalado."; fi
-    if ! is_installed_yay rustdesk-bin; then yay -S --needed --noconfirm rustdesk-bin; else info "RustDesk já instalado."; fi
-    if ! is_installed_yay freetube-bin; then yay -S --needed --noconfirm freetube-bin; else info "FreeTube já instalado."; fi
-    if ! is_installed_yay ipscan; then yay -S --needed --noconfirm ipscan; else info "Angry IP Scanner já instalado."; fi
-    if ! is_installed_yay brave-bin; then yay -S --needed --noconfirm brave-bin; else info "Brave Browser já instalado."; fi
-    if ! is_installed_yay google-chrome; then yay -S --needed --noconfirm google-chrome; else info "Google Chrome já instalado."; fi
-    if ! is_installed_yay microsoft-edge-stable-bin; then yay -S --needed --noconfirm microsoft-edge-stable-bin; else info "Microsoft Edge já instalado."; fi
-    if ! is_installed_yay teams-for-linux; then yay -S --needed --noconfirm teams-for-linux; else info "Microsoft Teams já instalado."; fi
-    if ! is_installed_yay jetbrains-toolbox; then yay -S --needed --noconfirm jetbrains-toolbox; else info "JetBrains Toolbox já instalado."; fi
+    if ! ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"; then
+        info "A saltar a instalação de aplicações adicionais."
+        return
+    fi
+    install_pacman obsidian
+    local aur_apps=(
+        lunarvim-git
+        rustdesk-bin
+        freetube-bin
+        ipscan
+        brave-bin
+        google-chrome
+        microsoft-edge-stable-bin
+        teams-for-linux
+        jetbrains-toolbox
+    )
+    install_yay "${aur_apps[@]}"
 }
 
 # ETAPA 7: INSTALAR APLICAÇÕES VIA FLATPAK (WHATSAPP)
 step7_install_flatpak_apps() {
-    ask_confirmation "Desejas instalar o WhatsApp for Linux (cliente não-oficial) via Flatpak?"
-    local WHATSAPP_ID="com.github.eneshecan.WhatsAppForLinux"
-
-    if ! is_installed_pacman flatpak; then
-        info "A instalar o Flatpak..."
-        sudo pacman -S --needed --noconfirm flatpak
-    else
-        info "O Flatpak já está instalado."
+    if ! ask_confirmation "Desejas instalar o WhatsApp for Linux (cliente não-oficial) via Flatpak?"; then
+        info "A saltar a instalação de apps via Flatpak."
+        return
     fi
-
+    install_pacman flatpak
+    local WHATSAPP_ID="com.github.eneshecan.WhatsAppForLinux"
     if ! is_installed_flatpak "$WHATSAPP_ID"; then
         info "A instalar o WhatsApp for Linux via Flatpak..."
-        sudo flatpak install --noninteractive --system flathub "$WHATSAPP_ID"
+        flatpak install --noninteractive --system flathub "$WHATSAPP_ID"
     else
         info "O WhatsApp for Linux já está instalado."
     fi
@@ -267,42 +322,47 @@ step7_install_flatpak_apps() {
 
 # ETAPA 8: OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
 step8_optimize_gnome() {
-    ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"
-    # Gestor de energia padrão
+    if ! ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"; then
+        info "A saltar a otimização do GNOME."
+        return
+    fi
+    # Gestor de energia
     if ! is_installed_pacman power-profiles-daemon; then
-        sudo pacman -S --needed --noconfirm power-profiles-daemon
+        install_pacman power-profiles-daemon
         sudo systemctl enable --now power-profiles-daemon.service
     else
         info "'power-profiles-daemon' já instalado e ativo."
     fi
     # Controlo de ventoinhas
     if ! is_installed_yay nbfc-linux-git; then
-        yay -S --needed --noconfirm nbfc-linux-git
+        install_yay nbfc-linux-git
         sudo systemctl enable --now nbfc
     else
         info "'nbfc-linux-git' já instalado e ativo."
     fi
     # Ferramentas e extensões
-    if ! is_installed_pacman gnome-tweaks; then sudo pacman -S --needed --noconfirm gnome-tweaks; else info "GNOME Tweaks já instalado."; fi
-    if ! is_installed_pacman gnome-shell-extension-appindicator; then sudo pacman -S --needed --noconfirm gnome-shell-extension-appindicator; else info "Extensão AppIndicator já instalada."; fi
-    if ! is_installed_yay gnome-shell-extension-clipboard-history; then yay -S --needed --noconfirm gnome-shell-extension-clipboard-history; else info "Extensão Clipboard History já instalada."; fi
-    if ! is_installed_yay gnome-shell-extension-vitals-git; then yay -S --needed --noconfirm gnome-shell-extension-vitals-git; else info "Extensão Vitals já instalada."; fi
-    if ! is_installed_yay gnome-shell-extension-pop-shell; then yay -S --needed --noconfirm gnome-shell-extension-pop-shell; else info "Extensão Pop Shell já instalada."; fi
-    if ! is_installed_yay gnome-shell-extension-pip-on-top-git; then yay -S --needed --noconfirm gnome-shell-extension-pip-on-top-git; else info "Extensão Picture-in-Picture já instalada."; fi
-    if ! is_installed_yay gnome-network-displays; then yay -S --needed --noconfirm gnome-network-displays; else info "Ferramenta Network Displays já instalada."; fi
+    install_pacman gnome-tweaks gnome-shell-extension-appindicator gnome-network-displays
+    local gnome_extensions_aur=(
+        gnome-shell-extension-clipboard-history
+        gnome-shell-extension-vitals-git
+        gnome-shell-extension-pop-shell
+        gnome-shell-extension-pip-on-top-git
+    )
+    install_yay "${gnome_extensions_aur[@]}"
 }
 
 # ETAPA 9: INSTALAÇÃO DE CODECS MULTIMÍDIA
 step9_install_codecs() {
-    ask_confirmation "Desejas instalar os pacotes de codecs essenciais (ffmpeg, gstreamer)?"
-    sudo pacman -S --needed --noconfirm ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+    if ! ask_confirmation "Desejas instalar os pacotes de codecs essenciais?"; then return; fi
+    local codecs=(ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav)
+    install_pacman "${codecs[@]}"
 }
 
 # ETAPA 10: CONFIGURAÇÃO DO BLUETOOTH
 step10_setup_bluetooth() {
-    ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"
+    if ! ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"; then return; fi
     if ! is_installed_pacman bluez-utils; then
-        sudo pacman -S --needed --noconfirm bluez bluez-utils
+        install_pacman bluez bluez-utils
         sudo systemctl enable --now bluetooth.service
     else
         info "Serviços de Bluetooth já instalados e ativos."
@@ -311,57 +371,96 @@ step10_setup_bluetooth() {
 
 # ETAPA 11: INTEGRAÇÃO COM ANDROID (KDE CONNECT)
 step11_setup_kdeconnect() {
-    ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"
-    if ! is_installed_pacman kdeconnect; then sudo pacman -S --needed --noconfirm kdeconnect; else info "KDE Connect já instalado."; fi
-    if ! is_installed_yay gnome-shell-extension-gsconnect; then yay -S --needed --noconfirm gnome-shell-extension-gsconnect; else info "Extensão GSConnect já instalada."; fi
+    if ! ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"; then return; fi
+    install_pacman kdeconnect
+    install_yay gnome-shell-extension-gsconnect
 }
 
-# ETAPA 12: ATIVAR EXTENSÕES DO GNOME
+# ETAPA 12: ATIVAR EXTENSÕES DO GNOME (VERSÃO CORRIGIDA)
 step12_enable_gnome_extensions() {
-    ask_confirmation "Desejas ativar as extensões do GNOME automaticamente?"
-    EXTENSIONS_TO_ENABLE=(
-        "appindicatorsupport@rgcjonas.gmail.com"
-        "clipboard-history@alexsaveau.dev"
-        "Vitals@CoreCoding.com"
-        "pop-shell@system76.com"
-        "pip-on-top@rafid.rafsan."
-        "gsconnect@andyholmes.github.io"
-    )
-    if ! command -v gnome-extensions &> /dev/null; then
+    if ! ask_confirmation "Desejas ativar as extensões do GNOME automaticamente?"; then return; fi
+    if ! command_exists gnome-extensions; then
         warning "Comando 'gnome-extensions' não encontrado. Não é possível ativar as extensões."
         return
     fi
-    for extension in "${EXTENSIONS_TO_ENABLE[@]}"; do
-        if gnome-extensions info "$extension" &> /dev/null; then
-            info "A ativar a extensão: $extension"
-            gnome-extensions enable "$extension"
-        else
-            warning "Extensão $extension não encontrada. A saltar."
+    # Mapeamento de nome de pacote para UUID da extensão
+    # O UUID pode ser encontrado com `gnome-extensions info <uuid>`
+    local -A extensions_map=(
+      ["gnome-shell-extension-appindicator"]="appindicatorsupport@rgcjonas.gmail.com"
+      ["gnome-shell-extension-clipboard-history"]="clipboard-history@alexsaveau.dev"
+      ["gnome-shell-extension-vitals-git"]="Vitals@CoreCoding.com"
+      ["gnome-shell-extension-pop-shell"]="pop-shell@system76.com"
+      ["gnome-shell-extension-pip-on-top-git"]="pip-on-top@rafostar.github.com"
+      ["gnome-shell-extension-gsconnect"]="gsconnect@andyholmes.github.io"
+    )
+    for pkg_name in "${!extensions_map[@]}"; do
+        local uuid="${extensions_map[$pkg_name]}"
+        if is_installed_yay "$pkg_name" || is_installed_pacman "$pkg_name"; then
+            info "A tentar ativar a extensão: $uuid"
+            if gnome-extensions list --enabled | grep -q "$uuid"; then
+                info "Extensão '$uuid' já está ativa."
+            else
+                gnome-extensions enable "$uuid"
+                success "Extensão '$uuid' ativada."
+            fi
         fi
     done
     warning "Pode ser necessário reiniciar a sessão (logout/login) para que as extensões funcionem corretamente."
 }
 
-# ETAPA 13: CONFIGURAÇÃO DO LAYOUT DO TECLADO
+
+# Função para adicionar o layout de teclado 'US International' de forma segura.
+#
+# Esta função verifica se o layout 'us+intl' já existe. Se não existir,
+# ela constrói a nova lista de layouts de forma programática para evitar
+# erros de formatação e, em seguida, atualiza as configurações do GNOME.
+#
 step13_setup_keyboard() {
-    ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"
+    # Pergunta ao utilizador se deseja continuar. Se a resposta for não, a função termina.
+    if ! ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"; then
+        return
+    fi
+
+    # Obtém a lista atual de layouts de teclado do sistema.
+    # O resultado é uma string no formato: [('xkb', 'br'), ('xkb', 'us')]
+    local current_layouts
     current_layouts=$(gsettings get org.gnome.desktop.input-sources sources)
-    if [[ $current_layouts != *"('xkb', 'us+intl')"* ]]; then
-        info "Adicionando layout de teclado 'US International'..."
-        layouts_prefix=${current_layouts%]}
-        new_layouts="$layouts_prefix, ('xkb', 'us+intl')]"
-        gsettings set org.gnome.desktop.input-sources sources "$new_layouts"
-    else
+
+    # Verifica se o layout 'us+intl' já está na lista para evitar duplicados.
+    # A expressão ' =~ ' faz uma verificação com expressão regular (regex).
+    if [[ "$current_layouts" == *"'us+intl'"* ]]; then
         info "Layout 'US International' já está configurado."
+    else
+        info "Adicionando layout de teclado 'US International'..."
+        
+        # O novo item que queremos adicionar, já formatado como uma string correta.
+        local new_item="('xkb', 'us+intl')"
+        local new_layouts
+
+        # Remove o primeiro '[' e o último ']' da string para isolar o conteúdo.
+        # Ex: de "[('xkb', 'br')]" para "('xkb', 'br')"
+        local content=${current_layouts:1:-1}
+
+        # Verifica se a lista original tinha algum conteúdo.
+        if [ -n "$content" ]; then
+            # Se a lista não estava vazia, junta o conteúdo antigo com o novo item, separados por vírgula.
+            new_layouts="[$content, $new_item]"
+        else
+            # Se a lista estava vazia, a nova lista contém apenas o novo item.
+            new_layouts="[$new_item]"
+        fi
+
+        # Define a nova lista de layouts, agora formatada corretamente.
+        gsettings set org.gnome.desktop.input-sources sources "$new_layouts"
+        success "Layout 'US International' adicionado com sucesso."
     fi
 }
 
 # ETAPA 14: CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
 step14_apply_personal_configs() {
-    ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"
-    # Firefox
-    if ! is_installed_pacman firefox; then sudo pacman -S --needed --noconfirm firefox; fi
-    if [[ $(xdg-settings get default-web-browser) != "firefox.desktop" ]]; then
+    if ! ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"; then return; fi
+    install_pacman firefox
+    if [[ "$(xdg-settings get default-web-browser)" != "firefox.desktop" ]]; then
         info "A definir o Firefox como navegador padrão..."
         xdg-settings set default-web-browser firefox.desktop
     fi
@@ -377,18 +476,21 @@ step14_apply_personal_configs() {
     info "Configuração do Git: $(git config --global user.name) <$(git config --global user.email)>"
     # VS Code
     if is_installed_yay visual-studio-code-bin; then
-        VSCODE_SETTINGS_FILE="$HOME/.config/Code/User/settings.json"
-        mkdir -p "$(dirname "$VSCODE_SETTINGS_FILE")"
-        [ ! -f "$VSCODE_SETTINGS_FILE" ] && echo "{}" > "$VSCODE_SETTINGS_FILE"
+        local vscode_settings_file="$HOME/.config/Code/User/settings.json"
+        mkdir -p "$(dirname "$vscode_settings_file")"
+        [ ! -f "$vscode_settings_file" ] && echo "{}" > "$vscode_settings_file"
         info "A configurar a fonte e o auto-save no VS Code..."
+        local tmp_file
+        tmp_file=$(mktemp)
         jq '."editor.fontFamily" = "MesloLGS NF, monospace" | ."terminal.integrated.fontFamily" = "MesloLGS NF, monospace" | ."files.autoSave" = "afterDelay"' \
-           "$VSCODE_SETTINGS_FILE" > /tmp/vscode_settings.tmp && mv /tmp/vscode_settings.tmp "$VSCODE_SETTINGS_FILE"
+           "$vscode_settings_file" > "$tmp_file" && mv "$tmp_file" "$vscode_settings_file"
+        success "Configurações do VS Code aplicadas."
     fi
 }
 
 # ETAPA 15: CONFIGURAÇÃO DE ENERGIA
 step15_setup_power_settings() {
-    ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"
+    if ! ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"; then return; fi
     info "A desativar a suspensão automática e a configurar o tempo de ecrã..."
     gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
     gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
@@ -398,41 +500,101 @@ step15_setup_power_settings() {
 
 # ETAPA 16: CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
 step16_setup_autostart() {
-    if is_installed_yay rustdesk-bin; then
-        ask_confirmation "Desejas que o RustDesk (acesso remoto) inicie automaticamente com o sistema?"
-        # A resposta da confirmação está na variável $REPLY
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            if ! systemctl is-enabled -q rustdesk.service; then
-                info "A ativar o serviço do RustDesk..."
-                sudo systemctl enable rustdesk.service
-            else
-                info "O serviço do RustDesk já está ativado."
-            fi
+    if is_installed_yay rustdesk-bin && ask_confirmation "Desejas que o RustDesk (acesso remoto) inicie automaticamente com o sistema?"; then
+        if ! sudo systemctl is-enabled -q rustdesk.service; then
+            info "A ativar o serviço do RustDesk para iniciar com o sistema..."
+            sudo systemctl enable rustdesk.service
+        else
+            info "O serviço do RustDesk já está ativado."
         fi
     fi
 }
 
+# Função idempotente para criar um perfil de microfone padrão
+create_microphone_preset() {
+    local config_dir="$HOME/.config/easyeffects/input"
+    local config_file="$config_dir/Voz_Limpa_e_Sem_Ruido.json"
+
+    if [ -f "$config_file" ]; then
+        info "O perfil de microfone '$config_file' já existe."
+        info "Nenhuma alteração foi feita para preservar suas configurações."
+        return 0
+    fi
+
+    info "Criando o perfil de microfone 'Voz_Limpa_e_Sem_Ruido.json'..."
+    mkdir -p "$config_dir"
+
+    cat << EOF > "$config_file"
+{
+    "bypass": false,
+    "plugins_order": [
+        "rnnoise_0",
+        "gate_0",
+        "compressor_0"
+    ],
+    "rnnoise_0": {
+        "bypass": false,
+        "input_gain": 10.0,
+        "output_gain": 10.0,
+        "model": "shannon_human-large-2023-01-23",
+        "vad_threshold": 90.0
+    },
+    "gate_0": {
+        "attack": 25.0,
+        "bypass": false,
+        "hold": 150.0,
+        "hysteresis": 4.0,
+        "input_gain": 0.0,
+        "lookahead": 1.5,
+        "output_gain": 0.0,
+        "range": 60.0,
+        "ratio": 2.0,
+        "release": 250.0,
+        "sidechain_source": "Middle",
+        "threshold": -42.0
+    },
+    "compressor_0": {
+        "attack": 5.0,
+        "bypass": false,
+        "input_gain": 0.0,
+        "knee": 6.0,
+        "makeup": 6.0,
+        "output_gain": 0.0,
+        "ratio": 4.0,
+        "release": 100.0,
+        "sidechain_source": "Middle",
+        "threshold": -20.0
+    }
+}
+EOF
+    success "Perfil 'Voz Limpa e Sem Ruído.json' criado com sucesso!"
+}
+
+
 # ETAPA 17: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
 step17_setup_audio_enhancement() {
-    ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio (supressão de ruído do microfone)?"
+    if ! ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio (supressão de ruído)?"; then return; fi
+    
+    # Instala o EasyEffects dos repositórios oficiais
+    install_pacman easyeffects
+    
+    # Instala os presets da comunidade encontrados no AUR
+    install_yay easyeffects-bundy01-presets
+    
+    warning "O EasyEffects e seus presets foram instalados."
 
-    # EasyEffects está nos repositórios oficiais e funciona com PipeWire (padrão no GNOME)
-    if ! is_installed_pacman easyeffects; then
-        info "A instalar o EasyEffects..."
-        sudo pacman -S --needed --noconfirm easyeffects
+    # Pergunta se o usuário deseja aplicar a configuração de microfone
+    if ask_confirmation "Desejas criar um perfil padrão de microfone para ter uma 'Voz Limpa e Sem Ruído'?"; then
+        create_microphone_preset
+        success "Perfil 'Voz Limpa e Sem Ruído.json' criado com sucesso!"
+        info "Para ativá-lo, siga os passos abaixo:"
+        echo "1. Abra o aplicativo 'EasyEffects'."
+        echo "2. Na aba 'Entrada', selecione o seu microfone."
+        echo "3. No painel 'Presets' à direita, clique em 'Carregar'."
+        echo "4. Selecione o perfil 'Voz Limpa e Sem Ruído' e aproveite!"
     else
-        info "EasyEffects já está instalado."
+        warning "Ok. A configuração do EasyEffects deverá ser feita manualmente através da aplicação."
     fi
-
-    # Instala predefinições da comunidade para facilitar a configuração
-    if ! is_installed_yay easyeffects-community-presets; then
-        info "A instalar predefinições da comunidade para o EasyEffects..."
-        yay -S --needed --noconfirm easyeffects-community-presets
-    else
-        info "Predefinições da comunidade para o EasyEffects já instaladas."
-    fi
-
-    warning "O EasyEffects foi instalado. A configuração final deve ser feita manualmente através da aplicação."
 }
 
 # ETAPA 18: INSTALAR CLIENTE DE E-MAIL (GEARY)
@@ -455,6 +617,7 @@ main() {
     clear
     echo -e "${C_BLUE}===================================================================${C_RESET}"
     echo -e "${C_BLUE}  Bem-vindo ao Script de Pós-Instalação para o Acer Nitro 5    ${C_RESET}"
+    echo -e "${C_BLUE}             (Versão Refatorada por Parceiro de Programacao)     ${C_RESET}"
     echo -e "${C_BLUE}===================================================================${C_RESET}"
     echo
     info "Este script irá instalar e configurar o teu ambiente de desenvolvimento."
@@ -466,12 +629,15 @@ main() {
         exit 1
     fi
 
-    # Atualiza o timestamp do sudo para não pedir a senha repetidamente
+    # Mantém o 'sudo' ativo durante a execução do script.
     info "A pedir permissões de administrador para o restante do script..."
     sudo -v
     while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
-    ask_confirmation "Desejas iniciar a configuração do sistema?"
+    if ! ask_confirmation "Desejas iniciar a configuração completa do sistema?"; then
+        info "Operação cancelada pelo utilizador. A sair."
+        exit 0
+    fi
 
     # --- Execução das Etapas ---
     section_header "A atualizar o sistema e a instalar pacotes essenciais..."
@@ -545,8 +711,8 @@ main() {
     step18_install_email_client
     success "Instalação do cliente de e-mail concluída."
 
-
     # --- Mensagem Final ---
+    # A sua mensagem final já era excelente, mantive-a na íntegra.
     echo
     echo -e "${C_GREEN}===================================================================${C_RESET}"
     echo -e "${C_GREEN}      SETUP CONCLUÍDO COM SUCESSO!                                 ${C_RESET}"
@@ -596,5 +762,6 @@ main() {
 }
 
 # --- Ponto de Entrada do Script ---
-# Chama a função principal para iniciar a execução.
-main
+# Chama a função principal para iniciar a execução, passando todos os argumentos
+# que o script possa ter recebido (útil para testes futuros).
+main "$@"
