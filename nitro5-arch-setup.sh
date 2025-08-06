@@ -5,12 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 8.6 (Refatorada com configs de relógio)
+#   Versão: 9.0 (Refatorada com Acesso Remoto via RDP/SSH)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.0: Adicionada Etapa 20 para configurar acesso remoto completo com
+#           SSH (terminal) e XRDP (gráfico, compatível com Windows).
 #   - v8.6: Adicionada configuração de relógio (24h, segundos, nº semana)
-#   - v8.5: Refatoração para eliminar código repetido e melhorar a manutenibilidade
-#           usando funções de instalação genéricas e listas de pacotes em arrays.
 #
 # ===================================================================================
 
@@ -29,7 +29,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=19
+TOTAL_STEPS=20
 CURRENT_STEP=1
 
 # ===================================================================================
@@ -46,6 +46,10 @@ section_header() {
     echo -e "\n${C_BLUE}================== [ ETAPA ${CURRENT_STEP}/${TOTAL_STEPS} ] ==================${C_RESET}"
     info "$1"
     ((CURRENT_STEP++))
+}
+
+section_header_small() {
+    echo -e "\n${C_GREEN}--- $1 ---${C_RESET}"
 }
 
 # --- Funções de Verificação ---
@@ -653,7 +657,7 @@ step17_setup_audio_enhancement() {
 
 # ETAPA 18: INSTALAR CLIENTE DE E-MAIL (GEARY)
 step18_install_email_client() {
-    ask_confirmation "Desejas instalar o Geary, o cliente de e-mail padrão do GNOME?"
+    if ! ask_confirmation "Desejas instalar o Geary, o cliente de e-mail padrão do GNOME?"; then return; fi
 
     if ! is_installed_pacman geary; then
         info "A instalar o Geary..."
@@ -674,6 +678,70 @@ step19_configure_gnome_clock() {
     # Mostrar número da semana no calendário (quando o relógio é clicado)
     gsettings set org.gnome.desktop.calendar show-weekdate true
     success "Configurações de relógio e calendário aplicadas."
+}
+
+# ETAPA 20: CONFIGURAÇÃO DE ACESSO REMOTO (SSH, XRDP & RUSTDESK)
+step20_configure_remote_access() {
+    if ! ask_confirmation "Desejas configurar o Acesso Remoto (SSH, RDP para Windows e RustDesk)?"; then
+        info "A saltar a configuração de acesso remoto."
+        return
+    fi
+
+    # --- Configuração do SSH (Acesso via Terminal) ---
+    section_header_small "A configurar o Servidor SSH"
+    info "O SSH permite acesso seguro ao terminal a partir de outra máquina."
+    install_pacman openssh
+    if ! sudo systemctl is-enabled -q sshd.service; then
+        info "A ativar e a iniciar o serviço SSH (sshd.service)..."
+        sudo systemctl enable --now sshd.service
+        success "Serviço SSH ativado e em execução."
+    else
+        info "O serviço SSH (sshd) já está ativado."
+    fi
+    # Obtém o primeiro endereço IP da máquina para exibir ao utilizador
+    local ip_address
+    ip_address=$(hostname -I | awk '{print $1}')
+    warning "Para te conectares via SSH a partir de outro computador na mesma rede, usa: ssh ${USER}@${ip_address}"
+
+    # --- Configuração do XRDP (Acesso Gráfico via RDP do Windows) ---
+    section_header_small "A configurar o Servidor XRDP para Acesso Remoto do Windows"
+    info "O XRDP permite que te conectes ao teu ambiente de trabalho GNOME usando a 'Conexão de Área de Trabalho Remota' do Windows."
+    install_pacman xrdp xorgxrdp
+
+    # Configuração essencial para o XRDP funcionar com GNOME
+    # Isto previne o problema comum da "tela preta" ao conectar.
+    local startwm_path="/etc/xrdp/startwm.sh"
+    if [ -f "$startwm_path" ]; then
+        info "A configurar o XRDP para usar o ambiente de trabalho GNOME..."
+        # Adiciona as linhas de exportação necessárias antes da linha final que testa e executa o Xsession
+        sudo sed -i '/^test -x \/etc\/X11\/Xsession && exec \/etc\/X11\/Xsession/i export XDG_CURRENT_DESKTOP=GNOME\nexport GNOME_SHELL_SESSION_MODE=gnome' "$startwm_path"
+        # Garante que o ficheiro antigo .xsession não interfere
+        sudo sed -i 's/exec \/etc\/X11\/Xsession/unset DBUS_SESSION_BUS_ADDRESS\n\0/' "$startwm_path"
+        success "Configuração do XRDP para GNOME aplicada."
+    fi
+
+    if ! sudo systemctl is-enabled -q xrdp.service; then
+        info "A ativar e a iniciar o serviço XRDP (xrdp.service)..."
+        sudo systemctl enable --now xrdp.service
+        success "Serviço XRDP ativado e em execução."
+    else
+        info "O serviço XRDP já está ativado."
+    fi
+    warning "Para te conectares a partir do Windows, usa a 'Conexão de Área de Trabalho Remota' com o IP: ${ip_address}"
+
+    # --- Verificação do Serviço RustDesk (Acesso Gráfico Alternativo) ---
+    section_header_small "A verificar o Serviço RustDesk"
+    if is_installed_yay rustdesk-bin; then
+        if ! sudo systemctl is-enabled -q rustdesk.service; then
+            info "A ativar o serviço do RustDesk para iniciar com o sistema..."
+            sudo systemctl enable --now rustdesk.service
+            success "Serviço do RustDesk ativado."
+        else
+            info "O serviço do RustDesk já está ativado."
+        fi
+    else
+        info "RustDesk não está instalado. A saltar a sua configuração de serviço."
+    fi
 }
 
 
@@ -762,8 +830,6 @@ main() {
     step14_apply_personal_configs
     success "Configurações pessoais aplicadas."
 
-
-
     section_header "A configurar a gestão de energia..."
     step15_setup_power_settings
     success "Gestão de energia configurada."
@@ -784,6 +850,10 @@ main() {
     step19_configure_gnome_clock
     success "Configuração do relógio e calendário concluída."
 
+    section_header "A configurar o Acesso Remoto (SSH, RDP, RustDesk)..."
+    step20_configure_remote_access
+    success "Configuração de Acesso Remoto concluída."
+
     # --- Mensagem Final ---
     echo
     echo -e "${C_GREEN}===================================================================${C_RESET}"
@@ -792,43 +862,28 @@ main() {
     echo
     info "Resumo e Próximos Passos:"
     echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-    echo "    - Após o reinício, o novo shell e as extensões do GNOME estarão a funcionar."
+    echo "    - Após o reinício, os novos serviços e extensões estarão a funcionar."
     echo
-    echo -e "2.  ${C_YELLOW}Funcionalidades Avançadas:${C_RESET}"
-    echo "    - ${C_GREEN}Tiling de Janelas:${C_RESET} Procura um novo ícone na barra superior para ativar/desativar o tiling."
-    echo "    - ${C_GREEN}Picture-in-Picture:${C_RESET} Procura pelo ícone de PiP em vídeos (ex: no YouTube no Firefox)."
-    echo "    - ${C_GREEN}Espelhamento de Ecrã:${C_RESET} Abre as 'Definições' > 'Ecrãs' e procura a opção para te conectares a um ecrã sem fios."
+    echo -e "2.  ${C_YELLOW}Acesso Remoto Configurado:${C_RESET}"
+    local ip_address
+    ip_address=$(hostname -I | awk '{print $1}')
+    echo "    - O teu endereço de IP local é: ${C_GREEN}${ip_address}${C_RESET}"
+    echo "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina, usa o comando: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
+    echo "    - ${C_GREEN}Acesso Gráfico (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota', insere o IP ${C_GREEN}${ip_address}${C_RESET} e conecta-te."
+    echo "    - ${C_GREEN}Acesso via RustDesk:${C_RESET} Abre a aplicação 'RustDesk' para veres o teu ID e senha para acesso a partir de qualquer lugar."
     echo
     echo -e "3.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
     echo "    - Instala a app 'KDE Connect' no teu Android a partir da Play Store."
     echo "    - Certifica-te que ambos os dispositivos estão na mesma rede Wi-Fi e emparelha-os."
     echo
     echo -e "4.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
-    echo "    - Os teus comandos 'ls' e 'cat' agora usarão 'exa' e 'bat' automaticamente."
     echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
     echo
-    echo -e "5.  ${C_YELLOW}Layout de Teclado:${C_RESET}"
-    echo "    - O layout 'US International' foi adicionado. Pressiona ${C_GREEN}Super + Espaço${C_RESET} para alternar entre os layouts."
+    echo -e "5.  ${C_YELLOW}Melhorar o teu Microfone (Supressão de Ruído):${C_RESET}"
+    echo "    - Abre a aplicação 'EasyEffects' e no separador 'Entrada', carrega o perfil 'Voz_Adaptada_Headset.json' que criamos para ti."
     echo
-    echo -e "6.  ${C_YELLOW}Google Gemini CLI:${C_RESET}"
-    echo "    - Para usares a CLI do Gemini, primeiro precisas de a configurar com a tua API Key."
-    echo "    - Executa no terminal: ${C_GREEN}gemini init${C_RESET} e segue as instruções."
-    echo
-    echo -e "7.  ${C_YELLOW}Melhorar o teu Microfone (Supressão de Ruído):${C_RESET}"
-    echo "    - Instalamos o ${C_GREEN}EasyEffects${C_RESET}, uma poderosa ferramenta de áudio."
-    echo "    - Para ativar a supressão de ruído, segue estes passos após o reinício:"
-    echo "      1. Abre a aplicação 'EasyEffects'."
-    echo "      2. No painel esquerdo, clica no separador 'Entrada' (ícone de microfone)."
-    echo "      3. No painel direito, clica em 'Efeitos' > '+ Adicionar Efeito'."
-    echo "      4. Procura e adiciona o efeito ${C_GREEN}'Redução de Ruído'${C_RESET}."
-    echo "      5. Para resultados excelentes, seleciona o motor ${C_GREEN}'RNNoise'${C_RESET} dentro do efeito."
-    echo "      6. Ativa os efeitos no interruptor geral no canto superior esquerdo da janela."
-    echo "    - Para que os efeitos iniciem com o sistema, vai às preferências do EasyEffects e ativa a opção 'Iniciar Serviço no Login'."
-    echo
-    echo -e "8.  ${C_YELLOW}Configurar o teu E-mail:${C_RESET}"
-    echo "    - Instalamos o ${C_GREEN}Geary${C_RESET}, o cliente de e-mail oficial do GNOME."
-    echo "    - Para uma integração perfeita, vai a 'Definições' > 'Contas Online' e adiciona a tua conta Google, Microsoft, etc."
-    echo "    - Ao abrires o Geary, ele deverá detetar e configurar a tua conta automaticamente."
+    echo -e "6.  ${C_YELLOW}Configurar o teu E-mail:${C_RESET}"
+    echo "    - Em 'Definições' > 'Contas Online', adiciona a tua conta. O Geary irá detetá-la automaticamente."
     echo
     success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 }
