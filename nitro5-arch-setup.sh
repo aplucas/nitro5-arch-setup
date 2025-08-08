@@ -5,12 +5,11 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.0 (Refatorada com Acesso Remoto via RDP/SSH)
+#   Versão: 9.1 (Refatorada com Acesso Remoto Completo)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v9.0: Adicionada Etapa 20 para configurar acesso remoto completo com
-#           SSH (terminal) e XRDP (gráfico, compatível com Windows).
-#   - v8.6: Adicionada configuração de relógio (24h, segundos, nº semana)
+#   - v9.1: Adicionada configuração do Google Remote Desktop na Etapa 20.
+#   - v9.0: Adicionada Etapa 20 para configurar acesso remoto com SSH e XRDP.
 #
 # ===================================================================================
 
@@ -680,16 +679,19 @@ step19_configure_gnome_clock() {
     success "Configurações de relógio e calendário aplicadas."
 }
 
-# ETAPA 20: CONFIGURAÇÃO DE ACESSO REMOTO (SSH, XRDP & RUSTDESK)
+# ETAPA 20: CONFIGURAÇÃO DE ACESSO REMOTO COMPLETO
 step20_configure_remote_access() {
-    if ! ask_confirmation "Desejas configurar o Acesso Remoto (SSH, RDP para Windows e RustDesk)?"; then
+    if ! ask_confirmation "Desejas configurar o Acesso Remoto (SSH, RDP, Google Remote Desktop e RustDesk)?"; then
         info "A saltar a configuração de acesso remoto."
         return
     fi
 
+    local ip_address
+    ip_address=$(hostname -I | awk '{print $1}')
+
     # --- Configuração do SSH (Acesso via Terminal) ---
     section_header_small "A configurar o Servidor SSH"
-    info "O SSH permite acesso seguro ao terminal a partir de outra máquina."
+    info "O SSH permite acesso seguro ao terminal a partir de outra máquina na mesma rede."
     install_pacman openssh
     if ! sudo systemctl is-enabled -q sshd.service; then
         info "A ativar e a iniciar o serviço SSH (sshd.service)..."
@@ -698,26 +700,23 @@ step20_configure_remote_access() {
     else
         info "O serviço SSH (sshd) já está ativado."
     fi
-    # Obtém o primeiro endereço IP da máquina para exibir ao utilizador
-    local ip_address
-    ip_address=$(hostname -I | awk '{print $1}')
-    warning "Para te conectares via SSH a partir de outro computador na mesma rede, usa: ssh ${USER}@${ip_address}"
+    warning "Para te conectares via SSH, usa: ssh ${USER}@${ip_address}"
 
     # --- Configuração do XRDP (Acesso Gráfico via RDP do Windows) ---
     section_header_small "A configurar o Servidor XRDP para Acesso Remoto do Windows"
-    info "O XRDP permite que te conectes ao teu ambiente de trabalho GNOME usando a 'Conexão de Área de Trabalho Remota' do Windows."
+    info "O XRDP permite acesso gráfico a partir da mesma rede local."
     install_pacman xrdp xorgxrdp
 
-    # Configuração essencial para o XRDP funcionar com GNOME
-    # Isto previne o problema comum da "tela preta" ao conectar.
     local startwm_path="/etc/xrdp/startwm.sh"
     if [ -f "$startwm_path" ]; then
         info "A configurar o XRDP para usar o ambiente de trabalho GNOME..."
-        # Adiciona as linhas de exportação necessárias antes da linha final que testa e executa o Xsession
-        sudo sed -i '/^test -x \/etc\/X11\/Xsession && exec \/etc\/X11\/Xsession/i export XDG_CURRENT_DESKTOP=GNOME\nexport GNOME_SHELL_SESSION_MODE=gnome' "$startwm_path"
-        # Garante que o ficheiro antigo .xsession não interfere
-        sudo sed -i 's/exec \/etc\/X11\/Xsession/unset DBUS_SESSION_BUS_ADDRESS\n\0/' "$startwm_path"
-        success "Configuração do XRDP para GNOME aplicada."
+        if ! grep -q "GNOME_SHELL_SESSION_MODE" "$startwm_path"; then
+            sudo sed -i '/^test -x \/etc\/X11\/Xsession && exec \/etc\/X11\/Xsession/i export XDG_CURRENT_DESKTOP=GNOME\nexport GNOME_SHELL_SESSION_MODE=gnome' "$startwm_path"
+            sudo sed -i 's/exec \/etc\/X11\/Xsession/unset DBUS_SESSION_BUS_ADDRESS\n\0/' "$startwm_path"
+            success "Configuração do XRDP para GNOME aplicada."
+        else
+            info "Configuração do XRDP para GNOME já parece estar aplicada."
+        fi
     fi
 
     if ! sudo systemctl is-enabled -q xrdp.service; then
@@ -727,7 +726,22 @@ step20_configure_remote_access() {
     else
         info "O serviço XRDP já está ativado."
     fi
-    warning "Para te conectares a partir do Windows, usa a 'Conexão de Área de Trabalho Remota' com o IP: ${ip_address}"
+    warning "Para te conectares via RDP, usa o IP: ${ip_address}"
+
+    # --- Configuração do Google Remote Desktop (Acesso de Qualquer Lugar) ---
+    section_header_small "A configurar o Google Remote Desktop"
+    info "Permite acesso gráfico de qualquer lugar do mundo através da tua conta Google."
+    install_yay chrome-remote-desktop
+
+    info "A criar o ficheiro de sessão para o GNOME..."
+    local crd_session_file="$HOME/.chrome-remote-desktop-session"
+    if [ ! -f "$crd_session_file" ]; then
+        echo "exec /usr/lib/gnome-remote-desktop/gnome-remote-desktop --start" > "$crd_session_file"
+        success "Ficheiro de sessão do Google Remote Desktop criado."
+    else
+        info "Ficheiro de sessão do Google Remote Desktop já existe."
+    fi
+    warning "PASSO FINAL MANUAL NECESSÁRIO para o Google Remote Desktop! Vê as instruções no final do script."
 
     # --- Verificação do Serviço RustDesk (Acesso Gráfico Alternativo) ---
     section_header_small "A verificar o Serviço RustDesk"
@@ -850,7 +864,7 @@ main() {
     step19_configure_gnome_clock
     success "Configuração do relógio e calendário concluída."
 
-    section_header "A configurar o Acesso Remoto (SSH, RDP, RustDesk)..."
+    section_header "A configurar o Acesso Remoto Completo..."
     step20_configure_remote_access
     success "Configuração de Acesso Remoto concluída."
 
@@ -864,31 +878,34 @@ main() {
     echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
     echo "    - Após o reinício, os novos serviços e extensões estarão a funcionar."
     echo
-    echo -e "2.  ${C_YELLOW}Acesso Remoto Configurado:${C_RESET}"
+    echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
     ip_address=$(hostname -I | awk '{print $1}')
     echo "    - O teu endereço de IP local é: ${C_GREEN}${ip_address}${C_RESET}"
-    echo "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina, usa o comando: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
-    echo "    - ${C_GREEN}Acesso Gráfico (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota', insere o IP ${C_GREEN}${ip_address}${C_RESET} e conecta-te."
-    echo "    - ${C_GREEN}Acesso via RustDesk:${C_RESET} Abre a aplicação 'RustDesk' para veres o teu ID e senha para acesso a partir de qualquer lugar."
+    echo "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina na mesma rede, usa: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
+    echo "    - ${C_GREEN}Acesso Gráfico na Rede Local (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota' e insere o IP ${C_GREEN}${ip_address}${C_RESET}."
+    echo "    - ${C_GREEN}Acesso Gráfico Alternativo (RustDesk):${C_RESET} Abre a aplicação 'RustDesk' para veres o teu ID e senha."
     echo
-    echo -e "3.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
-    echo "    - Instala a app 'KDE Connect' no teu Android a partir da Play Store."
-    echo "    - Certifica-te que ambos os dispositivos estão na mesma rede Wi-Fi e emparelha-os."
+    echo -e "3.  ${C_YELLOW}CONFIGURAÇÃO FINAL - Google Remote Desktop (Acesso de Qualquer Lugar):${C_RESET}"
+    echo "    - Este passo é ${C_RED}MANUAL${C_RESET} e precisa ser feito para ativar o acesso."
+    echo "    1. Num navegador, acede a: ${C_GREEN}https://remotedesktop.google.com/headless${C_RESET}"
+    echo "    2. Faz login com a tua conta Google."
+    echo "    3. Clica em 'Começar' e depois em 'Próximo'."
+    echo "    4. Clica em 'Autorizar'. A página irá gerar um comando para ti (começa com 'DISPLAY=...')."
+    echo "    5. ${C_RED}COPIA${C_RESET} esse comando, ${C_RED}COLA${C_RESET} no teu terminal aqui no Arch Linux e executa."
+    echo "    6. Define um PIN de 6 dígitos quando te for pedido. Esse será o teu PIN de acesso."
+    echo "    - Feito! O teu computador aparecerá agora em ${C_GREEN}https://remotedesktop.google.com${C_RESET}"
     echo
-    echo -e "4.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
+    echo -e "4.  ${C_YELLOW}Conectar com o Android:${C_RESET}"
+    echo "    - Instala a app 'KDE Connect' no teu Android e emparelha os dispositivos na mesma rede Wi-Fi."
+    echo
+    echo -e "5.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
     echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
-    echo
-    echo -e "5.  ${C_YELLOW}Melhorar o teu Microfone (Supressão de Ruído):${C_RESET}"
-    echo "    - Abre a aplicação 'EasyEffects' e no separador 'Entrada', carrega o perfil 'Voz_Adaptada_Headset.json' que criamos para ti."
-    echo
-    echo -e "6.  ${C_YELLOW}Configurar o teu E-mail:${C_RESET}"
-    echo "    - Em 'Definições' > 'Contas Online', adiciona a tua conta. O Geary irá detetá-la automaticamente."
     echo
     success "Aproveita o teu novo ambiente de desenvolvimento no Arch Linux!"
 }
 
 # --- Ponto de Entrada do Script ---
-# Chama a função principal para iniciar a execução, passando todos os argumentos
+# Chama a função principal para iniciar a execução, passando todos os- argumentos
 # que o script possa ter recebido (útil para testes futuros).
 main "$@"
