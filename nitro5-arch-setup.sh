@@ -5,12 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.3 (Refatorada com Acesso Remoto Completo)
+#   Versão: 9.4 (Refatorada com Acesso Remoto Completo)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.4: Corrigida a instalação do XRDP, que está no AUR e não nos repositórios oficiais.
 #   - v9.3: Corrigido método de obtenção de IP para usar 'ip addr' em vez de 'hostname -I'.
 #   - v9.2: Corrigido erro 'hostname: command not found' adicionando 'inetutils'.
-#   - v9.1: Adicionada configuração do Google Remote Desktop na Etapa 20.
 #
 # ===================================================================================
 
@@ -707,7 +707,8 @@ step20_configure_remote_access() {
     # --- Configuração do XRDP (Acesso Gráfico via RDP do Windows) ---
     section_header_small "A configurar o Servidor XRDP para Acesso Remoto do Windows"
     info "O XRDP permite acesso gráfico a partir da mesma rede local."
-    install_pacman xrdp xorgxrdp
+    # CORREÇÃO: xrdp e xorgxrdp estão no AUR, usar install_yay
+    install_yay xrdp xorgxrdp
 
     local startwm_path="/etc/xrdp/startwm.sh"
     if [ -f "$startwm_path" ]; then
