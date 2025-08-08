@@ -5,12 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.2 (Refatorada com Acesso Remoto Completo)
+#   Versão: 9.3 (Refatorada com Acesso Remoto Completo)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.3: Corrigido método de obtenção de IP para usar 'ip addr' em vez de 'hostname -I'.
 #   - v9.2: Corrigido erro 'hostname: command not found' adicionando 'inetutils'.
 #   - v9.1: Adicionada configuração do Google Remote Desktop na Etapa 20.
-#   - v9.0: Adicionada Etapa 20 para configurar acesso remoto com SSH e XRDP.
 #
 # ===================================================================================
 
@@ -688,7 +688,8 @@ step20_configure_remote_access() {
     fi
 
     local ip_address
-    ip_address=$(hostname -I | awk '{print $1}')
+    # Comando robusto para obter o IP, funciona na maioria dos sistemas.
+    ip_address=$(ip -4 -o addr show scope global | awk '{print $4}' | cut -d'/' -f1 | head -n 1)
 
     # --- Configuração do SSH (Acesso via Terminal) ---
     section_header_small "A configurar o Servidor SSH"
@@ -881,7 +882,7 @@ main() {
     echo
     echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
-    ip_address=$(hostname -I | awk '{print $1}')
+    ip_address=$(ip -4 -o addr show scope global | awk '{print $4}' | cut -d'/' -f1 | head -n 1)
     echo "    - O teu endereço de IP local é: ${C_GREEN}${ip_address}${C_RESET}"
     echo "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina na mesma rede, usa: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
     echo "    - ${C_GREEN}Acesso Gráfico na Rede Local (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota' e insere o IP ${C_GREEN}${ip_address}${C_RESET}."
