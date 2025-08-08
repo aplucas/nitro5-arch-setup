@@ -5,9 +5,10 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.1 (Refatorada com Acesso Remoto Completo)
+#   Versão: 9.2 (Refatorada com Acesso Remoto Completo)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.2: Corrigido erro 'hostname: command not found' adicionando 'inetutils'.
 #   - v9.1: Adicionada configuração do Google Remote Desktop na Etapa 20.
 #   - v9.0: Adicionada Etapa 20 para configurar acesso remoto com SSH e XRDP.
 #
@@ -125,7 +126,7 @@ source_envs() {
 step1_update_system() {
     info "A sincronizar e a atualizar a base de dados de pacotes..."
     sudo pacman -Syu --noconfirm
-    local base_deps=(git base-devel curl wget unzip zip jq)
+    local base_deps=(git base-devel curl wget unzip zip jq inetutils)
     info "A verificar dependências essenciais: ${base_deps[*]}"
     install_pacman "${base_deps[@]}"
 }
