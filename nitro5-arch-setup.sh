@@ -5,9 +5,11 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 10.4 (Refatorada com Ferramentas de IA)
+#   Versão: 10.5 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v10.5: Adicionada etapa para desativar (blacklist) o driver da GPU
+#            integrada AMD, garantindo que a GPU NVIDIA seja carregada por padrão.
 #   - v10.4: Corrigida a lógica de deteção do kernel para lidar com múltiplos
 #            pacotes donos (como linux-headers), filtrando para obter apenas o
 #            pacote de kernel base. Esta é a correção definitiva para a limpeza.
@@ -224,6 +226,16 @@ step3_configure_nvidia() {
         success "Ficheiro de configuração do Kernel Mode Setting criado. (essencial para Wayland)"
     else
         info "Configuração do Kernel Mode Setting já está correta."
+    fi
+
+    section_header_small "A forçar o uso da GPU NVIDIA (desativar a integrada)"
+    local blacklist_conf="/etc/modprobe.d/blacklist-amdgpu.conf"
+    if [ ! -f "$blacklist_conf" ] || ! grep -q "blacklist amdgpu" "$blacklist_conf"; then
+        info "A criar o ficheiro de blacklist para o driver da GPU integrada AMD (amdgpu)..."
+        echo 'blacklist amdgpu' | sudo tee "$blacklist_conf"
+        success "GPU integrada AMD desativada para forçar o uso da NVIDIA no próximo arranque."
+    else
+        info "O driver da GPU integrada AMD já se encontra desativado."
     fi
 
     # --- Limpeza de kernels antigos ANTES de regenerar a imagem ---
