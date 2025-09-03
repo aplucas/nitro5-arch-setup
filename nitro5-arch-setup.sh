@@ -5,13 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 10.0 (Refatorada com Ferramentas de IA)
+#   Versão: 10.1 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v10.0: Corrigida falha crítica na limpeza de kernels que removia o mkinitcpio.
-#            A lógica de deteção do kernel ativo foi refeita para ser mais robusta e
-#            foi adicionada uma reinstalação de segurança do mkinitcpio.
-#   - v9.9: Adicionada limpeza automática de kernels antigos para resolver problemas de espaço.
+#   - v10.1: Corrigida a causa raiz do erro 'mkinitcpio.conf not found'. O script
+#            agora garante que um kernel (linux e linux-lts) está instalado
+#            ANTES de tentar qualquer configuração, recriando os ficheiros necessários.
+#   - v10.0: Corrigida falha crítica na limpeza de kernels.
 #
 # ===================================================================================
 
@@ -150,36 +150,41 @@ step2_install_yay() {
 cleanup_old_kernels() {
     info "A verificar kernels antigos para libertar espaço em /boot..."
     
-    # Obter a versão do kernel em execução
     local current_kernel_uname
     current_kernel_uname=$(uname -r)
 
-    # Encontrar o pacote do kernel ativo de forma robusta
     local active_package
-    active_package=$(pacman -Q | grep -F " ${current_kernel_uname}" | awk '{print $1}')
-
+    # pacman -Qsq "^linux..." lista todos os pacotes de kernel instalados.
+    # Iteramos sobre eles para ver qual ficheiro vmlinuz corresponde ao uname.
+    for pkg in $(pacman -Qsq "^linux$|^linux-lts$|^linux-zen$|^linux-hardened$"); do
+        local pkg_version
+        pkg_version=$(pacman -Q "$pkg" | awk '{print $2}')
+        # Compara a versão do pacote com o uname para encontrar a correspondência.
+        if [[ "${current_kernel_uname}" == *"${pkg_version}"* ]] || [[ "${pkg_version}" == *"${current_kernel_uname}"* ]]; then
+             active_package=$pkg
+             break
+        fi
+    done
+    
     if [ -z "$active_package" ]; then
-        warning "Não foi possível determinar o pacote do kernel ativo. A saltar a limpeza por segurança."
+        warning "Não foi possível determinar o pacote do kernel ativo de forma segura. A saltar a limpeza."
         return
     fi
     success "Kernel ativo identificado: '$active_package' (versão ${current_kernel_uname})"
 
-    # Encontra todos os pacotes de kernel instalados (ex: linux, linux-lts, linux-zen)
     local installed_kernels
     installed_kernels=$(pacman -Qsq "^linux$|^linux-lts$|^linux-zen$|^linux-hardened$")
     
     local kernels_to_remove=()
     for kernel_pkg in $installed_kernels; do
         if [[ "$kernel_pkg" != "$active_package" ]]; then
-            info "Kernel antigo encontrado: '$kernel_pkg'. A agendar para remoção."
+            info "Kernel antigo/não utilizado encontrado: '$kernel_pkg'. A agendar para remoção."
             kernels_to_remove+=("$kernel_pkg")
         fi
     done
 
     if [ ${#kernels_to_remove[@]} -gt 0 ]; then
         if ask_confirmation "Desejas remover os seguintes pacotes de kernel antigos para libertar espaço: ${kernels_to_remove[*]}?"; then
-            # Usa -Rns, que é seguro agora que a lógica de deteção do kernel ativo está correta.
-            # O pacman não irá remover dependências partilhadas como o mkinitcpio.
             sudo pacman -Rns --noconfirm "${kernels_to_remove[@]}"
             success "Kernels antigos removidos com sucesso."
         else
@@ -197,6 +202,10 @@ step3_configure_nvidia() {
         info "A saltar a configuração da GPU NVIDIA. Monitores externos podem não funcionar."
         return
     fi
+
+    section_header_small "A garantir que um Kernel e o mkinitcpio estão presentes"
+    info "Este passo reinstala o kernel se necessário, o que corrige a falta do /etc/mkinitcpio.conf"
+    install_pacman linux linux-lts mkinitcpio
 
     section_header_small "A instalar drivers NVIDIA e a ferramenta de gestão 'EnvyControl'"
     install_pacman nvidia-dkms nvidia-settings
@@ -236,10 +245,6 @@ step3_configure_nvidia() {
 
     # --- Limpeza de kernels antigos ANTES de regenerar a imagem ---
     cleanup_old_kernels
-    
-    # --- Medida de Segurança: garantir que o mkinitcpio está instalado ---
-    info "A garantir que a ferramenta 'mkinitcpio' está instalada..."
-    install_pacman mkinitcpio
 
     # Regenera a imagem do kernel para aplicar TODAS as alterações de drivers.
     info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações..."
