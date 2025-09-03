@@ -5,13 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.8 (Refatorada com Ferramentas de IA)
+#   Versão: 9.9 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v9.8: Solução definitiva para a NVIDIA em Wayland. Adicionado o carregamento
-#           antecipado dos módulos NVIDIA no mkinitcpio.conf para garantir a prioridade no arranque.
+#   - v9.9: Adicionada limpeza automática de kernels antigos para resolver problemas de
+#           espaço em /boot durante a regeneração do initramfs.
+#   - v9.8: Solução definitiva para a NVIDIA em Wayland com carregamento antecipado de módulos.
 #   - v9.7: Corrigida a Etapa 3 para garantir a ativação da GPU NVIDIA em Wayland.
-#   - v9.6: Adicionada Etapa 3 para configurar a GPU NVIDIA como primária.
 #
 # ===================================================================================
 
@@ -146,6 +146,47 @@ step2_install_yay() {
     fi
 }
 
+# Função para limpar kernels antigos e libertar espaço em /boot
+cleanup_old_kernels() {
+    info "A verificar kernels antigos para libertar espaço em /boot..."
+    
+    # Identifica o pacote do kernel atualmente em execução
+    local current_kernel_uname
+    current_kernel_uname=$(uname -r)
+    local active_package
+    if pacman -Qo "/usr/lib/modules/${current_kernel_uname}/vmlinuz" &>/dev/null; then
+        active_package=$(pacman -Qo "/usr/lib/modules/${current_kernel_uname}/vmlinuz" | awk '{print $1}')
+    else
+        warning "Não foi possível determinar o pacote do kernel ativo. A saltar a limpeza por segurança."
+        return
+    fi
+    success "Kernel ativo identificado: '$active_package' (versão ${current_kernel_uname})"
+
+    # Encontra todos os pacotes de kernel instalados
+    local installed_kernels
+    installed_kernels=$(pacman -Q | grep -E '^(linux|linux-lts)[0-9._-]* ' | awk '{print $1}')
+    
+    local kernels_to_remove=()
+    for kernel_pkg in $installed_kernels; do
+        if [[ "$kernel_pkg" != "$active_package" ]]; then
+            info "Kernel antigo encontrado: '$kernel_pkg'. A agendar para remoção."
+            kernels_to_remove+=("$kernel_pkg")
+        fi
+    done
+
+    if [ ${#kernels_to_remove[@]} -gt 0 ]; then
+        if ask_confirmation "Desejas remover os seguintes pacotes de kernel antigos para libertar espaço: ${kernels_to_remove[*]}?"; then
+            sudo pacman -Rns --noconfirm "${kernels_to_remove[@]}"
+            success "Kernels antigos removidos com sucesso."
+        else
+            warning "Limpeza de kernels antigos cancelada. Pode haver falta de espaço em /boot."
+        fi
+    else
+        info "Nenhum kernel antigo encontrado para remover. Tudo certo!"
+    fi
+}
+
+
 # ETAPA 3: CONFIGURAÇÃO DA PLACA GRÁFICA NVIDIA (PARA MONITORES EXTERNOS)
 step3_configure_nvidia() {
     if ! ask_confirmation "Desejas configurar a placa NVIDIA como primária para garantir o funcionamento de monitores externos?"; then
@@ -191,9 +232,16 @@ step3_configure_nvidia() {
         info "Configuração do Kernel Mode Setting já está correta."
     fi
 
+    # --- Limpeza de kernels antigos ANTES de regenerar a imagem ---
+    cleanup_old_kernels
+
     # Regenera a imagem do kernel para aplicar TODAS as alterações de drivers.
     info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações..."
-    sudo mkinitcpio -P
+    if ! sudo mkinitcpio -P; then
+        error "Falha ao regenerar a imagem do kernel. Pode haver problemas de espaço ou configuração."
+        error "Por favor, verifica o output acima para mais detalhes."
+        return 1
+    fi
     success "Imagem do kernel regenerada."
 
     warning "É ESSENCIAL reiniciar o computador para que a nova configuração da placa gráfica seja aplicada."
