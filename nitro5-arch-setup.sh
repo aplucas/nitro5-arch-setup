@@ -960,26 +960,26 @@ main() {
     echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
     ip_address=$(ip -4 -o addr show scope global | awk '{print $4}' | cut -d'/' -f1 | head -n 1)
-    echo "    - O teu endereço de IP local é: ${C_GREEN}${ip_address}${C_RESET}"
-    echo "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina na mesma rede, usa: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
-    echo "    - ${C_GREEN}Acesso Gráfico na Rede Local (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota' e insere o IP ${C_GREEN}${ip_address}${C_RESET}."
+    echo -e "    - O teu endereço de IP local é: ${C_GREEN}${ip_address}${C_RESET}"
+    echo -e "    - ${C_GREEN}Acesso via Terminal (SSH):${C_RESET} Em outra máquina na mesma rede, usa: ${C_GREEN}ssh ${USER}@${ip_address}${C_RESET}"
+    echo -e "    - ${C_GREEN}Acesso Gráfico na Rede Local (RDP):${C_RESET} No Windows, abre a 'Conexão de Área de Trabalho Remota' e insere o IP ${C_GREEN}${ip_address}${C_RESET}."
     echo
     echo -e "3.  ${C_YELLOW}CONFIGURAÇÃO FINAL - Google Remote Desktop (Acesso de Qualquer Lugar):${C_RESET}"
-    echo "    - Este passo é ${C_RED}MANUAL${C_RESET} e precisa ser feito para ativar o acesso."
-    echo "    1. Num navegador, acede a: ${C_GREEN}https://remotedesktop.google.com/headless${C_RESET}"
+    echo -e "    - Este passo é ${C_RED}MANUAL${C_RESET} e precisa ser feito para ativar o acesso."
+    echo -e "    1. Num navegador, acede a: ${C_GREEN}https://remotedesktop.google.com/headless${C_RESET}"
     echo "    2. Faz login com a tua conta Google e segue os passos para autorizar um novo computador."
-    echo "    3. ${C_RED}COPIA${C_RESET} o comando gerado pela página, ${C_RED}COLA${C_RESET} no teu terminal e executa."
+    echo -e "    3. ${C_RED}COPIA${C_RESET} o comando gerado pela página, ${C_RED}COLA${C_RESET} no teu terminal e executa."
     echo "    4. Define um PIN de 6 dígitos. Esse será o teu PIN de acesso."
-    echo "    - Feito! O teu computador aparecerá em ${C_GREEN}https://remotedesktop.google.com${C_RESET}"
+    echo -e "    - Feito! O teu computador aparecerá em ${C_GREEN}https://remotedesktop.google.com${C_RESET}"
     echo
     echo -e "4.  ${C_YELLOW}A usar as tuas novas Ferramentas de IA:${C_RESET}"
-    echo "    - ${C_GREEN}Ollama (Modelos de Linguagem):${C_RESET} Abre um terminal e executa um modelo. Exemplo:"
-    echo "      ${C_BLUE}ollama run llama3${C_RESET}"
-    echo "    - ${C_GREEN}Stable Diffusion (Gerador de Imagens):${C_RESET} Procura por 'Stable Diffusion WebUI' no teu menu de aplicações para iniciar a interface web."
-    echo "    - ${C_GREEN}Upscayl (Melhorar Imagens):${C_RESET} Procura por 'Upscayl' no teu menu de aplicações e arrasta as tuas imagens para lá."
+    echo -e "    - ${C_GREEN}Ollama (Modelos de Linguagem):${C_RESET} Abre um terminal e executa um modelo. Exemplo:"
+    echo -e "      ${C_BLUE}ollama run llama3${C_RESET}"
+    echo -e "    - ${C_GREEN}Stable Diffusion (Gerador de Imagens):${C_RESET} Procura por 'Stable Diffusion WebUI' no teu menu de aplicações para iniciar a interface web."
+    echo -e "    - ${C_GREEN}Upscayl (Melhorar Imagens):${C_RESET} Procura por 'Upscayl' no teu menu de aplicações e arrasta as tuas imagens para lá."
     echo
     echo -e "5.  ${C_YELLOW}Primeiro Login com o Novo Terminal:${C_RESET}"
-    echo "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
+    echo -e "    - O assistente do ${C_GREEN}Powerlevel10k${C_RESET} pode iniciar. Se não, executa: ${C_GREEN}p10k configure${C_RESET}"
     echo
     success "Aproveita o teu novo ambiente de desenvolvimento e IA no Arch Linux!"
 }
@@ -988,3 +988,4 @@ main() {
 # Chama a função principal para iniciar a execução, passando todos os- argumentos
 # que o script possa ter recebido (útil para testes futuros).
 main "$@"
+
