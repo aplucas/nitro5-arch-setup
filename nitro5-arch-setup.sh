@@ -5,13 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.7 (Refatorada com Ferramentas de IA)
+#   Versão: 9.8 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.8: Solução definitiva para a NVIDIA em Wayland. Adicionado o carregamento
+#           antecipado dos módulos NVIDIA no mkinitcpio.conf para garantir a prioridade no arranque.
 #   - v9.7: Corrigida a Etapa 3 para garantir a ativação da GPU NVIDIA em Wayland.
-#           Adicionada a ativação explícita do DRM KMS e a regeneração do initramfs.
 #   - v9.6: Adicionada Etapa 3 para configurar a GPU NVIDIA como primária.
-#   - v9.5: Adicionada Etapa 21 para instalar ferramentas de IA e drivers CUDA.
 #
 # ===================================================================================
 
@@ -154,43 +154,47 @@ step3_configure_nvidia() {
     fi
 
     section_header_small "A instalar drivers NVIDIA e a ferramenta de gestão 'EnvyControl'"
-    # nvidia-dkms é geralmente mais robusto contra atualizações do kernel
-    # nvidia-settings é o painel de controlo oficial
-    # envycontrol é a ferramenta para alternar os modos
     install_pacman nvidia-dkms nvidia-settings
     install_yay envycontrol
 
     info "A configurar o sistema para usar o modo 'NVIDIA dedicada'..."
-    info "Isto garante a máxima compatibilidade com monitores externos."
-
-    # Verifica o modo atual antes de alternar
     local current_mode
     current_mode=$(sudo envycontrol -q)
-
     if [[ "$current_mode" == "nvidia" ]]; then
         success "O sistema já está configurado para o modo NVIDIA dedicada."
     else
-        info "A mudar para o modo NVIDIA... (Isto pode demorar um momento)"
+        info "A mudar para o modo NVIDIA..."
         sudo envycontrol -s nvidia
         success "Modo NVIDIA configurado com sucesso."
     fi
 
-    # --- Adição para garantir a ativação da NVIDIA com Wayland ---
-    section_header_small "A garantir a compatibilidade com Wayland e a carregar as configurações"
-    info "A ativar o NVIDIA DRM Kernel Mode Setting (KMS) para o Wayland..."
+    section_header_small "A garantir o carregamento antecipado dos drivers NVIDIA"
     
+    # Adiciona os módulos NVIDIA ao mkinitcpio.conf para carregamento antecipado.
+    local mkinitcpio_conf="/etc/mkinitcpio.conf"
+    local nvidia_modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
+    if ! grep -q "^MODULES=.*nvidia" "$mkinitcpio_conf"; then
+        info "A adicionar os módulos NVIDIA ao /etc/mkinitcpio.conf..."
+        sudo sed -i "s/^\(MODULES=(\)\(.*\))/\1${nvidia_modules} \2)/" "$mkinitcpio_conf"
+        success "Módulos NVIDIA adicionados ao mkinitcpio.conf."
+    else
+        info "Módulos NVIDIA já estão configurados no mkinitcpio.conf."
+    fi
+    
+    # Ativa o NVIDIA DRM Kernel Mode Setting (KMS), essencial para Wayland.
+    info "A ativar o NVIDIA DRM Kernel Mode Setting (KMS)..."
     local nvidia_kms_conf="/etc/modprobe.d/nvidia-drm-modeset.conf"
     if [ ! -f "$nvidia_kms_conf" ] || ! grep -q "options nvidia_drm modeset=1" "$nvidia_kms_conf"; then
         echo 'options nvidia_drm modeset=1' | sudo tee "$nvidia_kms_conf"
         success "Ficheiro de configuração do Kernel Mode Setting criado."
     else
-        info "Configuração do Kernel Mode Setting já parece estar correta."
+        info "Configuração do Kernel Mode Setting já está correta."
     fi
 
-    info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações do driver..."
+    # Regenera a imagem do kernel para aplicar TODAS as alterações de drivers.
+    info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações..."
     sudo mkinitcpio -P
     success "Imagem do kernel regenerada."
-    # --- Fim da adição ---
 
     warning "É ESSENCIAL reiniciar o computador para que a nova configuração da placa gráfica seja aplicada."
 }
