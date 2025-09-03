@@ -193,8 +193,8 @@ cleanup_old_kernels() {
 
 # ETAPA 3: CONFIGURAÇÃO DA PLACA GRÁFICA NVIDIA (PARA MONITORES EXTERNOS)
 step3_configure_nvidia() {
-    if ! ask_confirmation "Desejas configurar a placa NVIDIA como primária para garantir o funcionamento de monitores externos?"; then
-        info "A saltar a configuração da GPU NVIDIA. Monitores externos podem não funcionar."
+    if ! ask_confirmation "Desejas configurar a placa NVIDIA para usar os drivers proprietários?"; then
+        info "A saltar a configuração da GPU NVIDIA."
         return
     fi
 
@@ -202,27 +202,15 @@ step3_configure_nvidia() {
     info "Este passo reinstala o kernel se necessário, o que corrige a falta do /etc/mkinitcpio.conf"
     install_pacman linux linux-lts mkinitcpio
 
-    section_header_small "A instalar drivers NVIDIA e a ferramenta de gestão 'EnvyControl'"
+    section_header_small "A instalar os drivers proprietários da NVIDIA"
     install_pacman nvidia-dkms nvidia-settings
-    install_yay envycontrol
 
-    info "A configurar o sistema para usar o modo 'NVIDIA dedicada'..."
-    local current_mode
-    current_mode=$(sudo envycontrol -q)
-    if [[ "$current_mode" == "nvidia" ]]; then
-        success "O sistema já está configurado para o modo NVIDIA dedicada."
-    else
-        info "A mudar para o modo NVIDIA..."
-        sudo envycontrol -s nvidia
-        success "Modo NVIDIA configurado com sucesso."
-    fi
-
-    section_header_small "A garantir o carregamento antecipado dos drivers NVIDIA"
+    section_header_small "A garantir o carregamento antecipado dos drivers NVIDIA para Wayland"
     
     local mkinitcpio_conf="/etc/mkinitcpio.conf"
     local nvidia_modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
     if ! grep -q "^MODULES=.*nvidia" "$mkinitcpio_conf"; then
-        info "A adicionar os módulos NVIDIA ao /etc/mkinitcpio.conf..."
+        info "A adicionar os módulos NVIDIA ao /etc/mkinitcpio.conf para carregamento antecipado..."
         sudo sed -i "s/^\(MODULES=(\)\(.*\))/\1${nvidia_modules} \2)/" "$mkinitcpio_conf"
         success "Módulos NVIDIA adicionados ao mkinitcpio.conf."
     else
@@ -233,7 +221,7 @@ step3_configure_nvidia() {
     local nvidia_kms_conf="/etc/modprobe.d/nvidia-drm-modeset.conf"
     if [ ! -f "$nvidia_kms_conf" ] || ! grep -q "options nvidia_drm modeset=1" "$nvidia_kms_conf"; then
         echo 'options nvidia_drm modeset=1' | sudo tee "$nvidia_kms_conf"
-        success "Ficheiro de configuração do Kernel Mode Setting criado."
+        success "Ficheiro de configuração do Kernel Mode Setting criado. (essencial para Wayland)"
     else
         info "Configuração do Kernel Mode Setting já está correta."
     fi
@@ -250,7 +238,7 @@ step3_configure_nvidia() {
     fi
     success "Imagem do kernel regenerada."
 
-    warning "É ESSENCIAL reiniciar o computador para que a nova configuração da placa gráfica seja aplicada."
+    warning "É ESSENCIAL reiniciar o computador para que os drivers da placa gráfica sejam aplicados."
 }
 
 
@@ -1031,7 +1019,7 @@ main() {
     echo
     info "Resumo e Próximos Passos:"
     echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-    echo -e "    - Após o reinício, a placa gráfica NVIDIA estará ativa, e os monitores externos funcionarão."
+    echo -e "    - Após o reinício, os drivers da NVIDIA estarão ativos."
     echo
     echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
@@ -1064,4 +1052,3 @@ main() {
 # Chama a função principal para iniciar a execução, passando todos os- argumentos
 # que o script possa ter recebido (útil para testes futuros).
 main "$@"
-
