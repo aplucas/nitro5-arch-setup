@@ -5,13 +5,12 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 10.1 (Refatorada com Ferramentas de IA)
+#   Versão: 10.2 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v10.1: Corrigida a causa raiz do erro 'mkinitcpio.conf not found'. O script
-#            agora garante que um kernel (linux e linux-lts) está instalado
-#            ANTES de tentar qualquer configuração, recriando os ficheiros necessários.
-#   - v10.0: Corrigida falha crítica na limpeza de kernels.
+#   - v10.2: Corrigido o erro 'unbound variable' na função de limpeza de kernels
+#            ao inicializar a variável 'active_package'.
+#   - v10.1: Corrigida a causa raiz do erro 'mkinitcpio.conf not found'.
 #
 # ===================================================================================
 
@@ -153,7 +152,8 @@ cleanup_old_kernels() {
     local current_kernel_uname
     current_kernel_uname=$(uname -r)
 
-    local active_package
+    # Inicializa a variável para evitar o erro 'unbound variable' com 'set -u'
+    local active_package=""
     # pacman -Qsq "^linux..." lista todos os pacotes de kernel instalados.
     # Iteramos sobre eles para ver qual ficheiro vmlinuz corresponde ao uname.
     for pkg in $(pacman -Qsq "^linux$|^linux-lts$|^linux-zen$|^linux-hardened$"); do
