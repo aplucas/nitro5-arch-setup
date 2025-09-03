@@ -5,13 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.9 (Refatorada com Ferramentas de IA)
+#   Versão: 10.0 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v9.9: Adicionada limpeza automática de kernels antigos para resolver problemas de
-#           espaço em /boot durante a regeneração do initramfs.
-#   - v9.8: Solução definitiva para a NVIDIA em Wayland com carregamento antecipado de módulos.
-#   - v9.7: Corrigida a Etapa 3 para garantir a ativação da GPU NVIDIA em Wayland.
+#   - v10.0: Corrigida falha crítica na limpeza de kernels que removia o mkinitcpio.
+#            A lógica de deteção do kernel ativo foi refeita para ser mais robusta e
+#            foi adicionada uma reinstalação de segurança do mkinitcpio.
+#   - v9.9: Adicionada limpeza automática de kernels antigos para resolver problemas de espaço.
 #
 # ===================================================================================
 
@@ -146,25 +146,27 @@ step2_install_yay() {
     fi
 }
 
-# Função para limpar kernels antigos e libertar espaço em /boot
+# Função para limpar kernels antigos e libertar espaço em /boot (versão corrigida e segura)
 cleanup_old_kernels() {
     info "A verificar kernels antigos para libertar espaço em /boot..."
     
-    # Identifica o pacote do kernel atualmente em execução
+    # Obter a versão do kernel em execução
     local current_kernel_uname
     current_kernel_uname=$(uname -r)
+
+    # Encontrar o pacote do kernel ativo de forma robusta
     local active_package
-    if pacman -Qo "/usr/lib/modules/${current_kernel_uname}/vmlinuz" &>/dev/null; then
-        active_package=$(pacman -Qo "/usr/lib/modules/${current_kernel_uname}/vmlinuz" | awk '{print $1}')
-    else
+    active_package=$(pacman -Q | grep -F " ${current_kernel_uname}" | awk '{print $1}')
+
+    if [ -z "$active_package" ]; then
         warning "Não foi possível determinar o pacote do kernel ativo. A saltar a limpeza por segurança."
         return
     fi
     success "Kernel ativo identificado: '$active_package' (versão ${current_kernel_uname})"
 
-    # Encontra todos os pacotes de kernel instalados
+    # Encontra todos os pacotes de kernel instalados (ex: linux, linux-lts, linux-zen)
     local installed_kernels
-    installed_kernels=$(pacman -Q | grep -E '^(linux|linux-lts)[0-9._-]* ' | awk '{print $1}')
+    installed_kernels=$(pacman -Qsq "^linux$|^linux-lts$|^linux-zen$|^linux-hardened$")
     
     local kernels_to_remove=()
     for kernel_pkg in $installed_kernels; do
@@ -176,6 +178,8 @@ cleanup_old_kernels() {
 
     if [ ${#kernels_to_remove[@]} -gt 0 ]; then
         if ask_confirmation "Desejas remover os seguintes pacotes de kernel antigos para libertar espaço: ${kernels_to_remove[*]}?"; then
+            # Usa -Rns, que é seguro agora que a lógica de deteção do kernel ativo está correta.
+            # O pacman não irá remover dependências partilhadas como o mkinitcpio.
             sudo pacman -Rns --noconfirm "${kernels_to_remove[@]}"
             success "Kernels antigos removidos com sucesso."
         else
@@ -211,7 +215,6 @@ step3_configure_nvidia() {
 
     section_header_small "A garantir o carregamento antecipado dos drivers NVIDIA"
     
-    # Adiciona os módulos NVIDIA ao mkinitcpio.conf para carregamento antecipado.
     local mkinitcpio_conf="/etc/mkinitcpio.conf"
     local nvidia_modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
     if ! grep -q "^MODULES=.*nvidia" "$mkinitcpio_conf"; then
@@ -222,7 +225,6 @@ step3_configure_nvidia() {
         info "Módulos NVIDIA já estão configurados no mkinitcpio.conf."
     fi
     
-    # Ativa o NVIDIA DRM Kernel Mode Setting (KMS), essencial para Wayland.
     info "A ativar o NVIDIA DRM Kernel Mode Setting (KMS)..."
     local nvidia_kms_conf="/etc/modprobe.d/nvidia-drm-modeset.conf"
     if [ ! -f "$nvidia_kms_conf" ] || ! grep -q "options nvidia_drm modeset=1" "$nvidia_kms_conf"; then
@@ -234,6 +236,10 @@ step3_configure_nvidia() {
 
     # --- Limpeza de kernels antigos ANTES de regenerar a imagem ---
     cleanup_old_kernels
+    
+    # --- Medida de Segurança: garantir que o mkinitcpio está instalado ---
+    info "A garantir que a ferramenta 'mkinitcpio' está instalada..."
+    install_pacman mkinitcpio
 
     # Regenera a imagem do kernel para aplicar TODAS as alterações de drivers.
     info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações..."
@@ -986,6 +992,8 @@ main() {
     section_header "A aplicar configurações pessoais..."
     step15_apply_personal_configs
     success "Configurações pessoais aplicadas."
+
+
 
     section_header "A configurar a gestão de energia..."
     step16_setup_power_settings
