@@ -5,12 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 10.2 (Refatorada com Ferramentas de IA)
+#   Versão: 10.4 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v10.2: Corrigido o erro 'unbound variable' na função de limpeza de kernels
-#            ao inicializar a variável 'active_package'.
-#   - v10.1: Corrigida a causa raiz do erro 'mkinitcpio.conf not found'.
+#   - v10.4: Corrigida a lógica de deteção do kernel para lidar com múltiplos
+#            pacotes donos (como linux-headers), filtrando para obter apenas o
+#            pacote de kernel base. Esta é a correção definitiva para a limpeza.
+#   - v10.3: Reescrevida a lógica de deteção do kernel ativo.
 #
 # ===================================================================================
 
@@ -151,20 +152,14 @@ cleanup_old_kernels() {
     
     local current_kernel_uname
     current_kernel_uname=$(uname -r)
-
-    # Inicializa a variável para evitar o erro 'unbound variable' com 'set -u'
     local active_package=""
-    # pacman -Qsq "^linux..." lista todos os pacotes de kernel instalados.
-    # Iteramos sobre eles para ver qual ficheiro vmlinuz corresponde ao uname.
-    for pkg in $(pacman -Qsq "^linux$|^linux-lts$|^linux-zen$|^linux-hardened$"); do
-        local pkg_version
-        pkg_version=$(pacman -Q "$pkg" | awk '{print $2}')
-        # Compara a versão do pacote com o uname para encontrar a correspondência.
-        if [[ "${current_kernel_uname}" == *"${pkg_version}"* ]] || [[ "${pkg_version}" == *"${current_kernel_uname}"* ]]; then
-             active_package=$pkg
-             break
-        fi
-    done
+
+    # --- MÉTODO ROBUSTO PARA DETETAR O KERNEL ATIVO ---
+    # Verifica qual pacote é o "dono" do diretório de módulos do kernel em execução.
+    # Filtra os resultados para excluir os pacotes '-headers' e pega o primeiro resultado.
+    if pacman -Qo "/usr/lib/modules/${current_kernel_uname}/" &>/dev/null; then
+        active_package=$(pacman -Qo "/usr/lib/modules/${current_kernel_uname}/" | awk '{print $5}' | grep -v -- "-headers" | head -n 1)
+    fi
     
     if [ -z "$active_package" ]; then
         warning "Não foi possível determinar o pacote do kernel ativo de forma segura. A saltar a limpeza."
@@ -188,7 +183,7 @@ cleanup_old_kernels() {
             sudo pacman -Rns --noconfirm "${kernels_to_remove[@]}"
             success "Kernels antigos removidos com sucesso."
         else
-            warning "Limpeza de kernels antigos cancelada. Pode haver falta de espaço em /boot."
+            warning "Limpeza de kernels antigos cancelada. A regeneração do kernel pode falhar por falta de espaço."
         fi
     else
         info "Nenhum kernel antigo encontrado para remover. Tudo certo!"
