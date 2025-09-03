@@ -5,9 +5,11 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.5 (Refatorada com Ferramentas de IA)
+#   Versão: 9.6 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
+#   - v9.6: Adicionada Etapa 3 para configurar a GPU NVIDIA como primária, garantindo
+#           o funcionamento de monitores externos com a ferramenta 'envycontrol'.
 #   - v9.5: Adicionada Etapa 21 para instalar ferramentas de IA (Ollama, Stable Diffusion) e drivers CUDA.
 #   - v9.4: Corrigida a instalação do XRDP, que está no AUR.
 #   - v9.3: Corrigido método de obtenção de IP para usar 'ip addr'.
@@ -29,7 +31,7 @@ C_RED="\e[31m"
 C_RESET="\e[0m"
 
 # --- Contadores de Etapas ---
-TOTAL_STEPS=21
+TOTAL_STEPS=22
 CURRENT_STEP=1
 
 # ===================================================================================
@@ -145,8 +147,41 @@ step2_install_yay() {
     fi
 }
 
-# ETAPA 3: INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
-step3_install_langs() {
+# ETAPA 3: CONFIGURAÇÃO DA PLACA GRÁFICA NVIDIA (PARA MONITORES EXTERNOS)
+step3_configure_nvidia() {
+    if ! ask_confirmation "Desejas configurar a placa NVIDIA como primária para garantir o funcionamento de monitores externos?"; then
+        info "A saltar a configuração da GPU NVIDIA. Monitores externos podem não funcionar."
+        return
+    fi
+
+    section_header_small "A instalar drivers NVIDIA e a ferramenta de gestão 'EnvyControl'"
+    # nvidia-dkms é geralmente mais robusto contra atualizações do kernel
+    # nvidia-settings é o painel de controlo oficial
+    # envycontrol é a ferramenta para alternar os modos
+    install_pacman nvidia-dkms nvidia-settings
+    install_yay envycontrol
+
+    info "A configurar o sistema para usar o modo 'NVIDIA dedicada'..."
+    info "Isto garante a máxima compatibilidade com monitores externos."
+
+    # Verifica o modo atual antes de alternar
+    local current_mode
+    current_mode=$(sudo envycontrol -q)
+
+    if [[ "$current_mode" == "nvidia" ]]; then
+        success "O sistema já está configurado para o modo NVIDIA dedicada."
+    else
+        info "A mudar para o modo NVIDIA... (Isto pode demorar um momento)"
+        sudo envycontrol -s nvidia
+        success "Modo NVIDIA configurado com sucesso."
+    fi
+
+    warning "É ESSENCIAL reiniciar o computador para que a nova configuração da placa gráfica seja aplicada."
+}
+
+
+# ETAPA 4: INSTALAÇÃO DAS LINGUAGENS DE PROGRAMAÇÃO E FERRAMENTAS
+step4_install_langs() {
     if ! ask_confirmation "Desejas instalar Python, Gemini CLI, Node.js (via nvm), Rust e ferramentas, Go e Java?"; then
         info "A saltar a instalação de linguagens de programação."
         return
@@ -198,8 +233,8 @@ step3_install_langs() {
     install_pacman go jdk-openjdk
 }
 
-# ETAPA 4: FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
-step4_install_dev_tools() {
+# ETAPA 5: FERRAMENTAS DE DESENVOLVIMENTO E PRODUTIVIDADE
+step5_install_dev_tools() {
     if ! ask_confirmation "Desejas instalar VS Code, Docker, DBeaver e Insomnia?"; then
         info "A saltar a instalação de ferramentas de desenvolvimento."
         return
@@ -218,8 +253,8 @@ step4_install_dev_tools() {
     fi
 }
 
-# ETAPA 5: CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
-step5_configure_zsh() {
+# ETAPA 6: CONFIGURAÇÃO DO TERMINAL (ZSH + POWERLEVEL10K)
+step6_configure_zsh() {
     if ! ask_confirmation "Desejas instalar e configurar o ZSH como terminal padrão?"; then
         info "A saltar a configuração do ZSH."
         return
@@ -288,8 +323,8 @@ EOF
 }
 
 
-# ETAPA 6: APLICAÇÕES ADICIONAIS
-step6_install_extra_apps() {
+# ETAPA 7: APLICAÇÕES ADICIONAIS
+step7_install_extra_apps() {
     if ! ask_confirmation "Desejas instalar LunarVim, Obsidian, RustDesk, FreeTube, Angry IP Scanner, Brave, Chrome, Edge, Teams e JetBrains Toolbox?"; then
         info "A saltar a instalação de aplicações adicionais."
         return
@@ -309,8 +344,8 @@ step6_install_extra_apps() {
     install_yay "${aur_apps[@]}"
 }
 
-# ETAPA 7: INSTALAR APLICAÇÕES VIA FLATPAK (WHATSAPP)
-step7_install_flatpak_apps() {
+# ETAPA 8: INSTALAR APLICAÇÕES VIA FLATPAK (WHATSAPP)
+step8_install_flatpak_apps() {
     if ! ask_confirmation "Desejas instalar o WhatsApp for Linux (cliente não-oficial) via Flatpak?"; then
         info "A saltar a instalação de apps via Flatpak."
         return
@@ -325,8 +360,8 @@ step7_install_flatpak_apps() {
     fi
 }
 
-# ETAPA 8: OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
-step8_optimize_gnome() {
+# ETAPA 9: OTIMIZAÇÃO DO SISTEMA E FUNCIONALIDADES DO GNOME
+step9_optimize_gnome() {
     if ! ask_confirmation "Desejas instalar ferramentas de gestão, personalização e funcionalidades avançadas do GNOME?"; then
         info "A saltar a otimização do GNOME."
         return
@@ -356,15 +391,15 @@ step8_optimize_gnome() {
     install_yay "${gnome_extensions_aur[@]}"
 }
 
-# ETAPA 9: INSTALAÇÃO DE CODECS MULTIMÍDIA
-step9_install_codecs() {
+# ETAPA 10: INSTALAÇÃO DE CODECS MULTIMÍDIA
+step10_install_codecs() {
     if ! ask_confirmation "Desejas instalar os pacotes de codecs essenciais?"; then return; fi
     local codecs=(ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav)
     install_pacman "${codecs[@]}"
 }
 
-# ETAPA 10: CONFIGURAÇÃO DO BLUETOOTH
-step10_setup_bluetooth() {
+# ETAPA 11: CONFIGURAÇÃO DO BLUETOOTH
+step11_setup_bluetooth() {
     if ! ask_confirmation "Desejas instalar e ativar os serviços de Bluetooth?"; then return; fi
     if ! is_installed_pacman bluez-utils; then
         install_pacman bluez bluez-utils
@@ -374,15 +409,15 @@ step10_setup_bluetooth() {
     fi
 }
 
-# ETAPA 11: INTEGRAÇÃO COM ANDROID (KDE CONNECT)
-step11_setup_kdeconnect() {
+# ETAPA 12: INTEGRAÇÃO COM ANDROID (KDE CONNECT)
+step12_setup_kdeconnect() {
     if ! ask_confirmation "Desejas instalar o KDE Connect e a integração GSConnect para o GNOME?"; then return; fi
     install_pacman kdeconnect
     install_yay gnome-shell-extension-gsconnect
 }
 
-# ETAPA 12: ATIVAR EXTENSÕES DO GNOME (VERSÃO CORRIGIDA)
-step12_enable_gnome_extensions() {
+# ETAPA 13: ATIVAR EXTENSÕES DO GNOME (VERSÃO CORRIGIDA)
+step13_enable_gnome_extensions() {
     if ! ask_confirmation "Desejas ativar as extensões do GNOME automaticamente?"; then return; fi
     if ! command_exists gnome-extensions; then
         warning "Comando 'gnome-extensions' não encontrado. Não é possível ativar as extensões."
@@ -420,7 +455,7 @@ step12_enable_gnome_extensions() {
 # ela constrói a nova lista de layouts de forma programática para evitar
 # erros de formatação e, em seguida, atualiza as configurações do GNOME.
 #
-step13_setup_keyboard() {
+step14_setup_keyboard() {
     # Pergunta ao utilizador se deseja continuar. Se a resposta for não, a função termina.
     if ! ask_confirmation "Desejas adicionar o layout 'US International' (americano com ç)?"; then
         return
@@ -461,8 +496,8 @@ step13_setup_keyboard() {
     fi
 }
 
-# ETAPA 14: CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
-step14_apply_personal_configs() {
+# ETAPA 15: CONFIGURAÇÕES DE APLICAÇÕES PADRÃO E GIT
+step15_apply_personal_configs() {
     if ! ask_confirmation "Desejas definir o Firefox como navegador padrão, configurar o Git e o VS Code?"; then return; fi
     install_pacman firefox
     if [[ "$(xdg-settings get default-web-browser)" != "firefox.desktop" ]]; then
@@ -493,8 +528,8 @@ step14_apply_personal_configs() {
     fi
 }
 
-# ETAPA 15: CONFIGURAÇÃO DE ENERGIA
-step15_setup_power_settings() {
+# ETAPA 16: CONFIGURAÇÃO DE ENERGIA
+step16_setup_power_settings() {
     if ! ask_confirmation "Desejas aplicar as configurações de energia recomendadas (sem suspensão, ecrã desliga)?"; then return; fi
     info "A desativar a suspensão automática e a configurar o tempo de ecrã..."
     gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
@@ -503,8 +538,8 @@ step15_setup_power_settings() {
     gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 120 # 2 minutos
 }
 
-# ETAPA 16: CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
-step16_setup_autostart() {
+# ETAPA 17: CONFIGURAÇÃO DE SERVIÇOS DE INÍCIO AUTOMÁTICO
+step17_setup_autostart() {
     if is_installed_yay rustdesk-bin && ask_confirmation "Desejas que o RustDesk (acesso remoto) inicie automaticamente com o sistema?"; then
         if ! sudo systemctl is-enabled -q rustdesk.service; then
             info "A ativar o serviço do RustDesk para iniciar com o sistema..."
@@ -640,8 +675,8 @@ create_headset_preset() {
     info "Para ativá-lo, abra o EasyEffects, vá na aba 'Entrada' e carregue o novo perfil."
 }
 
-# ETAPA 17 FINAL: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
-step17_setup_audio_enhancement() {
+# ETAPA 18: MELHORAMENTO DE ÁUDIO (EASYEFFECTS)
+step18_setup_audio_enhancement() {
     if ! ask_confirmation "Desejas instalar o EasyEffects para melhoramento de áudio?"; then return; fi
     
     install_pacman easyeffects
@@ -655,8 +690,8 @@ step17_setup_audio_enhancement() {
     fi
 }
 
-# ETAPA 18: INSTALAR CLIENTE DE E-MAIL (GEARY)
-step18_install_email_client() {
+# ETAPA 19: INSTALAR CLIENTE DE E-MAIL (GEARY)
+step19_install_email_client() {
     if ! ask_confirmation "Desejas instalar o Geary, o cliente de e-mail padrão do GNOME?"; then return; fi
 
     if ! is_installed_pacman geary; then
@@ -667,8 +702,8 @@ step18_install_email_client() {
     fi
 }
 
-# ETAPA 19: CONFIGURAÇÕES DO RELÓGIO E CALENDÁRIO DO GNOME
-step19_configure_gnome_clock() {
+# ETAPA 20: CONFIGURAÇÕES DO RELÓGIO E CALENDÁRIO DO GNOME
+step20_configure_gnome_clock() {
     if ! ask_confirmation "Desejas configurar o relógio para exibir segundos, formato 24h e número da semana?"; then return; fi
     info "A aplicar configurações de relógio e calendário..."
     # Formato de 24 horas
@@ -680,8 +715,8 @@ step19_configure_gnome_clock() {
     success "Configurações de relógio e calendário aplicadas."
 }
 
-# ETAPA 20: CONFIGURAÇÃO DE ACESSO REMOTO COMPLETO
-step20_configure_remote_access() {
+# ETAPA 21: CONFIGURAÇÃO DE ACESSO REMOTO COMPLETO
+step21_configure_remote_access() {
     if ! ask_confirmation "Desejas configurar o Acesso Remoto (SSH, RDP, Google Remote Desktop e RustDesk)?"; then
         info "A saltar a configuração de acesso remoto."
         return
@@ -761,8 +796,8 @@ step20_configure_remote_access() {
     fi
 }
 
-# ETAPA 21: FERRAMENTAS DE INTELIGÊNCIA ARTIFICIAL
-step21_install_ai_tools() {
+# ETAPA 22: FERRAMENTAS DE INTELIGÊNCIA ARTIFICIAL
+step22_install_ai_tools() {
     if ! ask_confirmation "Desejas instalar ferramentas de IA (Ollama, Stable Diffusion, Upscayl) e os drivers CUDA da NVIDIA?"; then
         info "A saltar a instalação de ferramentas de IA."
         return
@@ -831,81 +866,85 @@ main() {
 
     section_header "A instalar o AUR Helper (yay)..."
     step2_install_yay
+    
+    section_header "A configurar a Placa Gráfica NVIDIA para monitores externos..."
+    step3_configure_nvidia
+    success "Configuração da GPU NVIDIA concluída."
 
     section_header "A instalar ambientes de programação e ferramentas..."
-    step3_install_langs
+    step4_install_langs
     success "Verificação de ambientes de programação concluída."
 
     section_header "A instalar ferramentas de desenvolvimento e produtividade..."
-    step4_install_dev_tools
+    step5_install_dev_tools
     success "Verificação de ferramentas de desenvolvimento concluída."
 
     section_header "A configurar um terminal moderno (ZSH + Powerlevel10k)..."
-    step5_configure_zsh
+    step6_configure_zsh
     success "Terminal configurado com ZSH + Powerlevel10k."
 
     section_header "A instalar aplicações adicionais..."
-    step6_install_extra_apps
+    step7_install_extra_apps
     success "Verificação de aplicações adicionais concluída."
 
     section_header "A instalar aplicações via Flatpak..."
-    step7_install_flatpak_apps
+    step8_install_flatpak_apps
     success "Verificação de aplicações Flatpak concluída."
 
     section_header "A otimizar o sistema e a adicionar funcionalidades ao GNOME..."
-    step8_optimize_gnome
+    step9_optimize_gnome
     success "Verificação de otimizações do sistema concluída."
 
     section_header "A instalar codecs para compatibilidade multimídia..."
-    step9_install_codecs
+    step10_install_codecs
     success "Codecs multimídia instalados."
 
     section_header "A configurar o Bluetooth..."
-    step10_setup_bluetooth
+    step11_setup_bluetooth
     success "Bluetooth configurado e ativado."
 
     section_header "A configurar a integração com o Android (KDE Connect)..."
-    step11_setup_kdeconnect
+    step12_setup_kdeconnect
     success "Integração com Android (KDE Connect) configurada."
 
     section_header "A ativar as extensões do GNOME instaladas..."
-    step12_enable_gnome_extensions
+    step13_enable_gnome_extensions
     success "Ativação das extensões do GNOME concluída."
 
     section_header "A configurar layouts de teclado adicionais..."
-    step13_setup_keyboard
+    step14_setup_keyboard
     success "Layout de teclado configurado."
 
     section_header "A aplicar configurações pessoais..."
-    step14_apply_personal_configs
+    step15_apply_personal_configs
     success "Configurações pessoais aplicadas."
 
     section_header "A configurar a gestão de energia..."
-    step15_setup_power_settings
+    step16_setup_power_settings
     success "Gestão de energia configurada."
 
     section_header "A configurar serviços de início automático..."
-    step16_setup_autostart
+    step17_setup_autostart
     success "Configuração de serviços de início automático concluída."
     
     section_header "A instalar melhoramentos de áudio (supressão de ruído)..."
-    step17_setup_audio_enhancement
+    step18_setup_audio_enhancement
     success "Instalação de ferramentas de áudio concluída."
 
     section_header "A instalar o cliente de e-mail do GNOME..."
-    step18_install_email_client
+    step19_install_email_client
     success "Instalação do cliente de e-mail concluída."
 
     section_header "A configurar o relógio e o calendário do GNOME..."
-    step19_configure_gnome_clock
+    step20_configure_gnome_clock
     success "Configuração do relógio e calendário concluída."
 
     section_header "A configurar o Acesso Remoto Completo..."
-    step20_configure_remote_access
+    step21_configure_remote_access
     success "Configuração de Acesso Remoto concluída."
 
     section_header "A instalar Ferramentas de Inteligência Artificial..."
-    step21_install_ai_tools
+    step22_install_ai_tools
     success "Instalação de Ferramentas de IA concluída."
 
     # --- Mensagem Final ---
@@ -916,7 +955,7 @@ main() {
     echo
     info "Resumo e Próximos Passos:"
     echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-    echo "    - Após o reinício, os drivers CUDA, novos serviços e extensões estarão a funcionar."
+    echo "    - Após o reinício, a placa gráfica NVIDIA estará ativa, e os monitores externos funcionarão."
     echo
     echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
