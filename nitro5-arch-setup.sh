@@ -5,14 +5,13 @@
 #
 #   Autor: Lucas A Pereira (aplucas)
 #   Refatorado por: Parceiro de Programacao
-#   Versão: 9.6 (Refatorada com Ferramentas de IA)
+#   Versão: 9.7 (Refatorada com Ferramentas de IA)
 #
 #   Este script automatiza a configuração de um ambiente de desenvolvimento completo.
-#   - v9.6: Adicionada Etapa 3 para configurar a GPU NVIDIA como primária, garantindo
-#           o funcionamento de monitores externos com a ferramenta 'envycontrol'.
-#   - v9.5: Adicionada Etapa 21 para instalar ferramentas de IA (Ollama, Stable Diffusion) e drivers CUDA.
-#   - v9.4: Corrigida a instalação do XRDP, que está no AUR.
-#   - v9.3: Corrigido método de obtenção de IP para usar 'ip addr'.
+#   - v9.7: Corrigida a Etapa 3 para garantir a ativação da GPU NVIDIA em Wayland.
+#           Adicionada a ativação explícita do DRM KMS e a regeneração do initramfs.
+#   - v9.6: Adicionada Etapa 3 para configurar a GPU NVIDIA como primária.
+#   - v9.5: Adicionada Etapa 21 para instalar ferramentas de IA e drivers CUDA.
 #
 # ===================================================================================
 
@@ -175,6 +174,23 @@ step3_configure_nvidia() {
         sudo envycontrol -s nvidia
         success "Modo NVIDIA configurado com sucesso."
     fi
+
+    # --- Adição para garantir a ativação da NVIDIA com Wayland ---
+    section_header_small "A garantir a compatibilidade com Wayland e a carregar as configurações"
+    info "A ativar o NVIDIA DRM Kernel Mode Setting (KMS) para o Wayland..."
+    
+    local nvidia_kms_conf="/etc/modprobe.d/nvidia-drm-modeset.conf"
+    if [ ! -f "$nvidia_kms_conf" ] || ! grep -q "options nvidia_drm modeset=1" "$nvidia_kms_conf"; then
+        echo 'options nvidia_drm modeset=1' | sudo tee "$nvidia_kms_conf"
+        success "Ficheiro de configuração do Kernel Mode Setting criado."
+    else
+        info "Configuração do Kernel Mode Setting já parece estar correta."
+    fi
+
+    info "A regenerar a imagem do kernel (initramfs) para aplicar as novas configurações do driver..."
+    sudo mkinitcpio -P
+    success "Imagem do kernel regenerada."
+    # --- Fim da adição ---
 
     warning "É ESSENCIAL reiniciar o computador para que a nova configuração da placa gráfica seja aplicada."
 }
@@ -955,7 +971,7 @@ main() {
     echo
     info "Resumo e Próximos Passos:"
     echo -e "1.  ${C_RED}REINICIA O TEU COMPUTADOR AGORA${C_RESET} para aplicar todas as alterações."
-    echo "    - Após o reinício, a placa gráfica NVIDIA estará ativa, e os monitores externos funcionarão."
+    echo -e "    - Após o reinício, a placa gráfica NVIDIA estará ativa, e os monitores externos funcionarão."
     echo
     echo -e "2.  ${C_YELLOW}Opções de Acesso Remoto:${C_RESET}"
     local ip_address
@@ -967,9 +983,9 @@ main() {
     echo -e "3.  ${C_YELLOW}CONFIGURAÇÃO FINAL - Google Remote Desktop (Acesso de Qualquer Lugar):${C_RESET}"
     echo -e "    - Este passo é ${C_RED}MANUAL${C_RESET} e precisa ser feito para ativar o acesso."
     echo -e "    1. Num navegador, acede a: ${C_GREEN}https://remotedesktop.google.com/headless${C_RESET}"
-    echo "    2. Faz login com a tua conta Google e segue os passos para autorizar um novo computador."
+    echo -e "    2. Faz login com a tua conta Google e segue os passos para autorizar um novo computador."
     echo -e "    3. ${C_RED}COPIA${C_RESET} o comando gerado pela página, ${C_RED}COLA${C_RESET} no teu terminal e executa."
-    echo "    4. Define um PIN de 6 dígitos. Esse será o teu PIN de acesso."
+    echo -e "    4. Define um PIN de 6 dígitos. Esse será o teu PIN de acesso."
     echo -e "    - Feito! O teu computador aparecerá em ${C_GREEN}https://remotedesktop.google.com${C_RESET}"
     echo
     echo -e "4.  ${C_YELLOW}A usar as tuas novas Ferramentas de IA:${C_RESET}"
